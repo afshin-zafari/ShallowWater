@@ -29,10 +29,15 @@
 			</Target>
 		</Build>
 		<Compiler>
+			<Add option="-std=c++11" />
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
+		<Unit filename="dtsw.cpp" />
+		<Unit filename="dtsw.hpp" />
 		<Unit filename="main.cpp" />
+		<Unit filename="sw_dist.hpp" />
+		<Unit filename="tasks.cpp" />
 		<Extensions>
 			<code_completion />
 			<envvars />

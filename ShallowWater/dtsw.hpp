@@ -1,5 +1,6 @@
 #ifndef DTSW_HPP
 #define DTSW_HPP
+#include "sw_dist.hpp"
 namespace dtsw{
     /*----------------------------------------*/
     void init(int argc, char *argv[]);
@@ -12,10 +13,5 @@ namespace dtsw{
     }Parameters_t;
     extern Parameters_t Parameters;
     /*----------------------------------------*/
-    class DTSWData {
-    public:
-        DTSWData (int r,int c){}
-    };
-    typedef DTSWData Data;
 }
 #endif // DTSW_HPP
