@@ -1,0 +1,21 @@
+# depslib dependency file v1.0
+1489420643 source:c:\afshin\dtshallowwater\shallowwater-master\shallowwater\main.cpp
+	<iostream>
+	"dtsw.hpp"
+
+1489417259 c:\afshin\dtshallowwater\shallowwater-master\shallowwater\dtsw.hpp
+	"sw_dist.hpp"
+
+1489423893 source:c:\afshin\dtshallowwater\shallowwater-master\shallowwater\dtsw.cpp
+	"dtsw.hpp"
+
+1489424452 c:\afshin\dtshallowwater\shallowwater-master\shallowwater\sw_dist.hpp
+	<vector>
+	<string>
+	<sstream>
+	<iomanip>
+	<iostream>
+
+1489423275 source:c:\afshin\dtshallowwater\shallowwater-master\shallowwater\tasks.cpp
+	"dtsw.hpp"
+
