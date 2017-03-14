@@ -18,7 +18,7 @@ LINK = mpif90
 ifeq ($(CXX),icpc)
 #-----------------------Intel Compiler set---------------------
 	LINK_FLAGS=-lm -lrt -L$(DUCTTEIP_LIBPATH) -l$(DUCTTEIP_LIB) -Wl,--allow-multiple-definition 
-	COMP_FLAGS= $(SUPERGLUE_FLAGS) $(DUCTTEIP_FLAGS) -std=c++11 -qopt-prefetch -O3  -xCORE-AVX2
+	COMP_FLAGS= $(SUPERGLUE_FLAGS) $(DUCTTEIP_FLAGS) -std=c++11 -qopt-prefetch -O3  -xCORE-AVX2 -g
 else
 #-----------------------GCC Compiler set---------------------
 	GCOV_FLAGS=-fprofile-arcs -ftest-coverage
@@ -38,19 +38,13 @@ NC=\033[0m
 all: $(appfile)
 
 $(appfile) : $(appfile)($(outdir)/*.o)
-	$(info ---------------------------------------------------------)
-	@echo -e "generate output exe $(RED)$(appfile)$(NC)."
-	$(info ---------------------------------------------------------)
-
+	@echo -e "$(GREEN) generate output exe $(NC) $(RED)$(appfile)$(NC)."
 
 $(appfile)($(outdir)/*.o) : $(objects)
-	$(info ---------------------------------------------------------)
-	$(info link objects to app. )
-	$(info ---------------------------------------------------------)
+	@echo -e "$(GREEN) *** link objects *** $(NC)"
 	@$(CPP) -o $(appfile) $? $(LINK_FLAGS)
 
 $(objects):  $(outdir)/%.o:  $(SOURCE_DIR)/%.cpp 
-#	$(info compile $(notdir $<) )
 	@echo -e "$(GREEN) comopile $(notdir $<) $(NC)"
 	@$(CPP) -c -o $@ $< $(COMP_FLAGS)
 
