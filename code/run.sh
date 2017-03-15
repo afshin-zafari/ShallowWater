@@ -24,14 +24,15 @@ N=10
 JobID=${SLURM_JOB_ID}
 app=./bin/dtsw 
 
-params="-P $P -p $p -q $q -M $N $B $b -N $N $B $b -t $nt --dlb $DLB --ipn $ipn --timeout 3"
+params="-P $P -p $p -q $q -M $N $B $b -N $N $B $b -t $nt --ipn $ipn --timeout 6"
 echo "Params: $params"
 tempdir=./temp
 mkdir -p $tempdir
 outfile=$tempdir/tests.out
 echo "========================================================================================="
 set -x 
-mpirun  -ordered-output -n $P -ppn $ipn -outfile-pattern  $outfile -l  $app ${params}
+#mpirun  -ordered-output -n $P -ppn $ipn -outfile-pattern  $outfile -errfile-pattern $outfile  -l  $app ${params}
+mpirun  -n $P --map-by ppr:$ipn:node --output-filename $outfile  $app ${params}
 grep "\[0\]" $outfile >$tempdir/tests_p0.out
 grep "\[1\]" $outfile >$tempdir/tests_p1.out
 rm *file*.txt

@@ -11,20 +11,18 @@ SOURCE_DIR      = ./src
 HEADER_DIR      = ./include
 DUCTTEIP_FLAGS  = -I$(HEADER_DIR) -DWITH_MPI=1 -I$(SUPERGLUE_DIR) -I$(DUCTTEIP_INC)
 
-CPP  = mpiicpc
-LINK = mpif90
-
-
 ifeq ($(CXX),icpc)
 #-----------------------Intel Compiler set---------------------
+	CPP  = mpiicpc
 	LINK_FLAGS=-lm -lrt -L$(DUCTTEIP_LIBPATH) -l$(DUCTTEIP_LIB) -Wl,--allow-multiple-definition 
 	COMP_FLAGS= $(SUPERGLUE_FLAGS) $(DUCTTEIP_FLAGS) -std=c++11 -qopt-prefetch -O3  -xCORE-AVX2 -g
 else
 #-----------------------GCC Compiler set---------------------
+	CPP  = mpicxx
 	GCOV_FLAGS=-fprofile-arcs -ftest-coverage
 	OPTIM_FLAGS=-mavx -march=bdver1 -mfma4 -Ofast  -Wwrite-strings
 	SPECIAL_FLAGS=$(OPTIM_FLAGS)     
-	LINK_FLAGS=-lm -lrt -lpthread
+	LINK_FLAGS=-lm -lrt -lpthread -L$(DUCTTEIP_LIBPATH) -l$(DUCTTEIP_LIB) -Wl,--allow-multiple-definition -Wl,--whole-archive
 	COMP_FLAGS= $(SUPERGLUE_FLAGS) $(DUCTTEIP_FLAGS) -std=c++11 $(SPECIAL_FLAGS) 
 endif
 #########################################################
