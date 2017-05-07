@@ -14,7 +14,7 @@ DUCTTEIP_FLAGS  = -I$(HEADER_DIR) -DWITH_MPI=1 -I$(SUPERGLUE_DIR) -I$(DUCTTEIP_I
 ifeq ($(CXX),icpc)
 #-----------------------Intel Compiler set---------------------
 	CPP  = mpiicpc
-	LINK_FLAGS=-lm -lrt -L$(DUCTTEIP_LIBPATH) -l$(DUCTTEIP_LIB) -Wl,--allow-multiple-definition 
+	LINK_FLAGS=-lm -lrt -pthread -L$(DUCTTEIP_LIBPATH) -l$(DUCTTEIP_LIB) -Wl,--allow-multiple-definition 
 	COMP_FLAGS= $(SUPERGLUE_FLAGS) $(DUCTTEIP_FLAGS) -std=c++11 -qopt-prefetch -O3  -xCORE-AVX2 -g
 else
 #-----------------------GCC Compiler set---------------------

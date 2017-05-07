@@ -5,6 +5,7 @@ namespace dtsw{
     Data *H,*T,*D;
     Data *F1,*F2,*F3,*F4;
     Data *H1,*H2,*H3,*H4;
+    atmdata_t *Atm;
     SWAlgorithm *sw_engine;
     /*----------------------------------------*/
     void init(int argc, char *argv[]){
