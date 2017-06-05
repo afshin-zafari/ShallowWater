@@ -12,32 +12,49 @@
 #include "dt_difftask.hpp"
 #include "dt_timestepstask.hpp"
 #include "ductteip.hpp"
+#include "sg/superglue.hpp"
 
 namespace dtsw{
+  
   /*---------------------------------------------------------*/
   class SWAlgorithm: public IContext{
   private:
     std::vector<SWTask*> tasks;
+    SuperGlue<Options> *sg_engine;
   public:
-    SWAlgorithm():IContext("ShallowWater"){}
+  /*---------------------------------------------------------*/
+    SWAlgorithm():IContext("ShallowWater"){
+      sg_engine = new SuperGlue<Options>;
+    }
+  /*---------------------------------------------------------*/
     void submit(SWTask *t){
       tasks.push_back(t);
-      //IDuctteipTask *task = new IDuctteipTask(this,t->name,t->key,t->host,t->getDataAccess());
       dtEngine.register_task(t);
-      //      IDuctteipTask *tt=dtEngine.getTask(th);
-      //      tt->run();
     }
-    void subtask( SWTask *, SGTask *){}
+  /*---------------------------------------------------------*/
+    void subtask( SWTask *parent, SGTask *child){
+      child->set_parent(parent);
+      sg_engine->submit(child);
+    }
+  /*---------------------------------------------------------*/
     void dump_tasks(){
       for(auto t: tasks){
 	t->dump();
       }
     }
+  /*---------------------------------------------------------*/
     virtual void runKernels(IDuctteipTask *task )override {
       std::cout << "runKernels for " << task->get_name() << std::endl;
     }
+  /*---------------------------------------------------------*/
+    void finalize(){
+      dtEngine.finalize();
+    }
+  /*---------------------------------------------------------*/
     string getTaskName(unsigned long key){}
+  /*---------------------------------------------------------*/
     void  taskFinished(DuctTeip_Task *task, TimeUnit dur){}
+  /*---------------------------------------------------------*/
   };
   extern SWAlgorithm *sw_engine;
   /*----------------------------------------------*/

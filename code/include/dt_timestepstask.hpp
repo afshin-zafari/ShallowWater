@@ -1,38 +1,54 @@
 #ifndef DT_TIMESTEPSTASK_HPP
 #define DT_TIMESTEPSTASK_HPP
 #include "dt_taskbase.hpp"
+#include "ductteip.hpp"
 namespace dtsw{
+  /*---------------------------------------------------------------*/
+  typedef list<DataAccess*> DataAccessList ;
+  void data_access(DataAccessList *dlist,Data *d,IData::AccessType rw){
+    DataAccess *dx1 = new DataAccess;
+    dx1->data = d;
+    if ( rw == Data::READ){
+      dx1->required_version = d->getWriteVersion();
+      dx1->type = IData::READ;
+    }
+    else{
+      dx1->required_version = d->getReadVersion();
+      dx1->type = IData::WRITE;
+    }
+    dx1->required_version.setContext( glbCtx.getLevelString() );
+    d->getWriteVersion().setContext( glbCtx.getLevelString() );
+    d->getReadVersion().setContext( glbCtx.getLevelString() );
+    dlist->push_back(dx1);
+    d->incrementVersion(rw);
+  }
+  /*---------------------------------------------------------------*/
   class TimeStepsTask : public SWTask{
   private:
     int time_step;
     Data *A,*B;
   public:
-    TimeStepsTask(Data &d,int i):A(&d),B(nullptr),time_step(i){
-      *this >> *A;
-      this->key = TIMESTEPS;
-      this->host = A->getHost();
-      name.assign("TimeSteps");
+    static Data *D;
+    static int last_step ;
+  /*---------------------------------------------------------------*/
+    TimeStepsTask(){
+      last_step++;
+      register_data();
     }
-    TimeStepsTask(Data &d1, Data &d2,int i):A(&d1),B(&d2),time_step(i){
-      std::cout << "timestepDep " << std::endl;
-      *this <<  *A	>> *B ;
-      this->key = TIMESTEPS;
-      this->host = B->getHost();
-      name.assign("TimeStepsDep");
-    }
-    void run();
-    virtual void runKernel(){
-      std::cout <<"runKernel of " << name << std::endl;
-      setFinished(true);
-    }
+  /*---------------------------------------------------------------*/
+    void runKernel();
+    void finished();
+  /*---------------------------------------------------------------*/
     void dump(){
-      std::cout << "TimeStep  "<< time_step << " " 
-		<< A->name <<" ";
-      if (B)
-	std::cout << B->name <<" ";
+      std::cout << "TimeStep  "<< time_step << " ";		
+      if (D)
+	std::cout << D->name <<" ";
       
     std:cout << std::endl;
     }
+    /*----------------------------------------------------------------*/
+    void register_data();
+    /*----------------------------------------------------------------*/
   };
 }
 #endif

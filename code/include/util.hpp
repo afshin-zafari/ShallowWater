@@ -37,5 +37,8 @@ namespace dtsw{
                     int item_count,
                     int block_index);
     void test_read_Atm();
+    void test_sparse_d_dist();
+    void test_vector_H_dist();
+    void test_vector_Atm_dist();
 }
 #endif // UTIL_HPP

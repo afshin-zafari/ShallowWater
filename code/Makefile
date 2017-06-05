@@ -26,8 +26,8 @@ else
 	COMP_FLAGS= $(SUPERGLUE_FLAGS) $(DUCTTEIP_FLAGS) -std=c++11 $(SPECIAL_FLAGS) 
 endif
 #########################################################
-headers:=$(notdir $(shell ls -Sr $(SOURCE_DIR)/*.cpp))
-objnames:=$(headers:%.cpp=%.o)
+source:=$(notdir $(shell ls -Sr $(SOURCE_DIR)/*.cpp))
+objnames:=$(source:%.cpp=%.o)
 objects:=$(addprefix $(outdir)/,$(objnames))
 RED=\033[0;31m
 GREEN=\033[1;32m
@@ -43,7 +43,7 @@ $(appfile)($(outdir)/*.o) : $(objects)
 	@$(CPP) -o $(appfile) $? $(LINK_FLAGS)
 
 $(objects):  $(outdir)/%.o:  $(SOURCE_DIR)/%.cpp 
-	@echo -e "$(GREEN) comopile $(notdir $<) $(NC)"
+	@echo -e "$(GREEN) compile $(notdir $<) $(NC)"
 	@$(CPP) -c -o $@ $< $(COMP_FLAGS)
 
 

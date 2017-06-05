@@ -7,10 +7,19 @@ namespace dtsw{
     void init(int argc, char *argv[]);
     void finalize();
     void run();
+    typedef struct Distribution{
+        int p,q,P;
+        int rows_per_block,cols_per_block;
+        int blocks_per_row,blocks_per_col;
+
+    }Distribution_t;
+    /*------------------------------------------*/
+    extern Distribution_t dist;
     /*----------------------------------------*/
     typedef struct parameters{
         int nb;
         double dt;
+        Distribution_t dist;
     }Parameters_t;
     typedef struct atmdata {
         double f;
@@ -22,6 +31,7 @@ namespace dtsw{
 
     extern Parameters_t Parameters;
     extern atmdata_t *Atm;
+    extern SWAlgorithm *sw_engine;
     /*----------------------------------------*/
 }
 #endif // DTSW_HPP
