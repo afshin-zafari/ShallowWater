@@ -1,13 +1,16 @@
 #ifndef DT_DATABASE_HPP
 #define DT_DATABASE_HPP
 #include "ductteip.hpp"
+#include "sg_database.hpp"
 namespace dtsw{
   enum {ADD,DIFF,RHS,STEP,TIMESTEPS};
+  /*=============================================================================*/
   class DTSWData : public IData {
   private:
     std::vector <DTSWData *> Dlist;
     int rows,cols,row_idx,col_idx,host;
   public:
+    SGData *sg_data;
     int sp_row,sp_col;
     std::string name;
     /*---------------------------------------------------------------------------*/
