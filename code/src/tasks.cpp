@@ -51,7 +51,7 @@ namespace dtsw{
     
     
     double d = H.v(0,0) +  H.x(0,0);
-    const double gh0 = 0;//todo
+    const double gh0 = Parameters.gh0;
 
     for (uint32_t i = 0; i < H.get_rows() ; ++i) {
       const atmdata &a(Atm[i]);
@@ -119,7 +119,7 @@ namespace dtsw{
   /*---------------------------------------------*/
   void SGStepTask::run(){
     SGData &H(*e),&F1(*a),&F2(*b),&F3(*c),&F4(*d);
-    double s=1.0;//todo
+    double s=1.0* TimeStepsTask::last_step * Parameters.dt /6.0;
     if (!H.get_data() ) return;
     for(int i=0;i<H.get_rows();i++){
       H[i] += s *( F1[i] + 2.0*(F2[i]+F3[i])+F4[i]); 

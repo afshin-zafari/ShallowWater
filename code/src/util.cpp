@@ -217,9 +217,9 @@ namespace dtsw{
   /*------------------------------------------*/
   /*------------------------------------------*/
   int get_owner(int brow, int bcol){
-    int r = brow % Parameters.dist.p;
-    int c = bcol % Parameters.dist.q;
-    int rank = r * Parameters.dist.q+ c;
+    int r = brow % Parameters.p;
+    int c = bcol % Parameters.q;
+    int rank = r * Parameters.q+ c;
     return rank == me;
   }
   /*------------------------------------------*/
@@ -255,8 +255,8 @@ namespace dtsw{
     for(size_t i=0;i<nnz;i++){
       int row = index[i].first;
       int col = index[i].second;
-      int brow = row / Parameters.dist.rows_per_block;
-      int bcol = col / Parameters.dist.cols_per_block;
+      int brow = row / Parameters.partition_level[1].rows_per_block;
+      int bcol = col / Parameters.partition_level[1].cols_per_block;
       if (!get_owner(brow,bcol))
 	continue;
 
@@ -302,17 +302,17 @@ namespace dtsw{
   /*------------------------------------------*/
   void test_sparse_d_dist(){
     int M = 6400;
-    int N = 6400;;
-    Parameters.dist.p = 1;
-    Parameters.dist.q = 3;
-    Parameters.dist.P = Parameters.dist.p * Parameters.dist.q;
-    Parameters.dist.blocks_per_col = 4;
-    Parameters.dist.blocks_per_row = 4;
-    Parameters.dist.cols_per_block = N / Parameters.dist.blocks_per_col;
-    Parameters.dist.rows_per_block = M / Parameters.dist.blocks_per_row;
+    int N = 6400;
+    Parameters.p = 1;
+    Parameters.q = 3;
+    Parameters.P = Parameters.p * Parameters.q;
+    Parameters.partition_level[1].blocks_per_col = 4;
+    Parameters.partition_level[1].blocks_per_row = 4;
+    Parameters.partition_level[1].cols_per_block = N / Parameters.partition_level[1].blocks_per_col;
+    Parameters.partition_level[1].rows_per_block = M / Parameters.partition_level[1].blocks_per_row;
     size_t sum = 0;
-    for (me = 0; me <Parameters.dist.P;me++){
-      SparseD *spD = new SparseD(Parameters.dist.blocks_per_row,Parameters.dist.blocks_per_col);
+    for (me = 0; me <Parameters.P;me++){
+      SparseD *spD = new SparseD(Parameters.partition_level[1].blocks_per_row,Parameters.partition_level[1].blocks_per_col);
       size_t nnz = read_var_D_dist(*spD);
       std::cout << "NNZ: " << nnz << " rank = " << me <<  std::endl;
       sum += print_sparse_D(*spD);
@@ -325,8 +325,8 @@ namespace dtsw{
     for(size_t i=0;i<d.row_index.size();i++){
       int dr=d.row_index[i];
       int dc=d.col_index[i];
-      int hc = dc - d.bcol * Parameters.dist.cols_per_block;
-      int hr = dr - d.brow * Parameters.dist.rows_per_block;
+      int hc = dc - d.bcol * Parameters.partition_level[1].cols_per_block;
+      int hr = dr - d.brow * Parameters.partition_level[1].rows_per_block;
       h[hr] += d.value[i].v[0] * h[hc];
     }
 
@@ -357,7 +357,7 @@ namespace dtsw{
     read_var_H(fn,data);
     int n = data.size();
     for(int i=0;i<n;i++){
-      int brow = i /4 / Parameters.dist.rows_per_block;
+      int brow = i /4 / Parameters.partition_level[1].rows_per_block;
       if (!get_owner(brow,0))
 	continue;
       H(brow).value.push_back(data[i]);
@@ -382,17 +382,17 @@ namespace dtsw{
   void test_vector_H_dist(){
     const char *fn="../galew-6400-31-ep2.7-o4-gc-0.05/H";
     int M = 6400;
-    int N = 6400;;
-    Parameters.dist.p = 3;
-    Parameters.dist.q = 1;
-    Parameters.dist.P = Parameters.dist.p * Parameters.dist.q;
-    Parameters.dist.blocks_per_col = 4;
-    Parameters.dist.blocks_per_row = 4;
-    Parameters.dist.cols_per_block = N / Parameters.dist.blocks_per_col;
-    Parameters.dist.rows_per_block = M / Parameters.dist.blocks_per_row;
+    int N = 6400;
+    Parameters.p = 3;
+    Parameters.q = 1;
+    Parameters.P = Parameters.p * Parameters.q;
+    Parameters.partition_level[1].blocks_per_col = 4;
+    Parameters.partition_level[1].blocks_per_row = 4;
+    Parameters.partition_level[1].cols_per_block = N / Parameters.partition_level[1].blocks_per_col;
+    Parameters.partition_level[1].rows_per_block = M / Parameters.partition_level[1].blocks_per_row;
     size_t sum = 0;
-    for (me = 0; me <Parameters.dist.P;me++){
-      HVector *H= new HVector(Parameters.dist.blocks_per_row);
+    for (me = 0; me <Parameters.P;me++){
+      HVector *H= new HVector(Parameters.partition_level[1].blocks_per_row);
       size_t n = read_var_H_dist(fn,*H)/4;
       std::cout << "Total elems: " << n << " rank = " << me <<  std::endl;
       sum += print_vector_H(*H);
@@ -427,7 +427,7 @@ namespace dtsw{
     int n = data.size();
     for(int i=0;i<n;i++){
       int a_row =i/(sizeof(atmdata_t)/ sizeof(double));
-      int brow = a_row / Parameters.dist.rows_per_block;
+      int brow = a_row / Parameters.partition_level[1].rows_per_block;
       if (!get_owner(brow,0)){
 	continue;
       }
@@ -443,16 +443,16 @@ namespace dtsw{
     const char *fn="../galew-6400-31-ep2.7-o4-gc-0.05/atm";
     int M = 6400;
     int N = 6400;
-    Parameters.dist.p = 2;
-    Parameters.dist.q = 1;
-    Parameters.dist.P = Parameters.dist.p * Parameters.dist.q;
-    Parameters.dist.blocks_per_col = 4;
-    Parameters.dist.blocks_per_row = 4;
-    Parameters.dist.cols_per_block = N / Parameters.dist.blocks_per_col;
-    Parameters.dist.rows_per_block = M / Parameters.dist.blocks_per_row;
+    Parameters.p = 2;
+    Parameters.q = 1;
+    Parameters.P = Parameters.p * Parameters.q;
+    Parameters.partition_level[1].blocks_per_col = 4;
+    Parameters.partition_level[1].blocks_per_row = 4;
+    Parameters.partition_level[1].cols_per_block = N / Parameters.partition_level[1].blocks_per_col;
+    Parameters.partition_level[1].rows_per_block = M / Parameters.partition_level[1].blocks_per_row;
     size_t sum = 0;
-    for (me = 0; me <Parameters.dist.P;me++){
-      AtmVector *A= new AtmVector(Parameters.dist.blocks_per_row);
+    for (me = 0; me <Parameters.P;me++){
+      AtmVector *A= new AtmVector(Parameters.partition_level[1].blocks_per_row);
       size_t n = read_var_atm_dist(fn,*A)/sizeof(atmdata_t);
       n = print_vector_Atm(*A);
       std::cout << "Total elems: " << n << " in rank " << me <<  std::endl;

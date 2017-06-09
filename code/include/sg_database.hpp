@@ -2,6 +2,14 @@
 #define SG_DATABASE_HPP
 #include "util.hpp"
 namespace dtsw{
+  struct Dimension{
+    int num_blocks,num_elems;
+  };
+  struct Partitions{
+    Dimension x,y;
+  };
+  Partitions Level[3];
+  //  Level[0].y.num_elems;
   /*----------------------------------------------------------------*/
   struct Options: public DefaultOptions<Options>{};
   typedef Handle <Options> SGHandle;
@@ -27,7 +35,8 @@ namespace dtsw{
     SpInfo       sp_info;
   public:
     /*----------------------------------------------------------------*/
-    void partition_data(DTSWData &d,int R);
+    SGSWData(){}
+    void partition_data(DTSWData &d,int R,int C);
     /*----------------------------------------------------------------*/
     SGSWData(int i, int j){my_row=i;my_col=j;}
     /*----------------------------------------------------------------*/
@@ -36,6 +45,8 @@ namespace dtsw{
     int get_rows(){return elem_rows;}
     /*----------------------------------------------------------------*/
     int get_blocks(){return rows;}
+    int get_row_blocks(){return rows;}
+    int get_col_blocks(){return cols;}
     /*----------------------------------------------------------------*/
     SGSWData &  operator()(int i, int j){
       return *parts[j*rows+i];
@@ -72,6 +83,7 @@ namespace dtsw{
     quad<double> *get_data(){return data;}
     /*----------------------------------------------------------------*/
     SpInfo &get_sp_info(){return sp_info;}
+    void set_sp_info(SpInfo &sp){sp_info.sp_blocks = sp.sp_blocks;}
     /*----------------------------------------------------------------*/
   };
   /*----------------------------------------------------------------*/

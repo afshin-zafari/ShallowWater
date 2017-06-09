@@ -51,6 +51,13 @@ namespace dtsw{
     void getExistingMemoryInfo(byte **b, int *s, int *l){}
     /*---------------------------------------------------------------------------*/
     void setNewMemoryInfo(MemoryItem*){}
+    int get_rows(){return rows;}
+    int get_cols(){return cols;}
+    void partition_2nd_level(int nby,int nbx){
+      for(auto d: Dlist){
+	d->sg_data->partition_data(*d,nby,nbx);
+      }
+    }
     /*---------------------------------------------------------------------------*/
 
   };

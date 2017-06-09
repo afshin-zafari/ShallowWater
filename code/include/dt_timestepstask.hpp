@@ -32,7 +32,7 @@ namespace dtsw{
     static int last_step ;
   /*---------------------------------------------------------------*/
     TimeStepsTask(){
-      last_step++;
+      time_step = last_step++;
       register_data();
     }
   /*---------------------------------------------------------------*/

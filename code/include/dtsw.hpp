@@ -8,21 +8,32 @@ namespace dtsw{
   void finalize();
   void run();
   /*----------------------------------------*/
-  typedef struct Distribution{
-    int p,q,P;
-    int rows_per_block,cols_per_block;
-    int blocks_per_row,blocks_per_col;
-
-  }Distribution_t;
-  /*------------------------------------------*/
-  extern Distribution_t dist;
+  typedef struct Partition{    
+    union {
+      int rows_per_block;
+      int M;
+      int chunk_size;
+    };
+    union {
+      int cols_per_block;
+      int N;
+    };
+    union{
+      int blocks_per_row;
+      int Mb;
+    };
+    union{
+      int blocks_per_col;
+      int Nb;
+    };
+  }Partition_t;
   /*----------------------------------------*/
   typedef struct parameters{
-    int nb;
+    int p,q,P;
     double dt;
-    Distribution_t dist;
+    Partition_t partition_level[3];
     char *filename;
-    int chunk_size;
+    double gh0;
   }Parameters_t;
   /*----------------------------------------*/
   typedef struct atmdata {
