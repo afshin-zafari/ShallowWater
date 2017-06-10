@@ -70,6 +70,9 @@ namespace dtsw{
 		  std::vector< std::pair<uint32_t, uint32_t> > &idx,
 		  std::vector< quad<double> > &data);
   void split(SpInfo  &M, int ny, int nx,int chunk_size);
+  void read_var_H(const char *filename,
+		  std::vector<double> &data);
+  /*=================================================*/
   void read_var_D_block(const char * filename,
 			std::vector< std::pair<uint32_t, uint32_t> > &idx,
 			std::vector< quad<double> > &data,
@@ -77,15 +80,7 @@ namespace dtsw{
   void print_index(std::vector< std::pair<uint32_t, uint32_t> > &idx,int from,int N);
   void print_data(std::vector< quad<double> > &data,int from,int N);
   void test_read_sparse();
-  void read_var_H(const char *filename,
-		  std::vector<double> &data);
-  void read_var_H_block(const char *filename,
-			std::vector<double> &data,
-			int item_count,
-			int block_index);
   void test_read_H();
-  void read_var_Atm(const char *filename,
-                    std::vector<double> &data);
   void read_var_Atm_block(const char *filename,
 			  std::vector<double> &data,
 			  int item_count,

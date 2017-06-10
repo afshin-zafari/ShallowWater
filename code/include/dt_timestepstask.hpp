@@ -26,7 +26,6 @@ namespace dtsw{
   class TimeStepsTask : public SWTask{
   private:
     int time_step;
-    Data *A,*B;
   public:
     static Data *D;
     static int last_step ;

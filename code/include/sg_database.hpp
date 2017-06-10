@@ -33,6 +33,7 @@ namespace dtsw{
     double       val;
     DataPackList pack_data;
     SpInfo       sp_info;
+    byte         *memory;
   public:
     /*----------------------------------------------------------------*/
     SGSWData(){}
@@ -84,6 +85,7 @@ namespace dtsw{
     /*----------------------------------------------------------------*/
     SpInfo &get_sp_info(){return sp_info;}
     void set_sp_info(SpInfo &sp){sp_info.sp_blocks = sp.sp_blocks;}
+    int get_row_index(){return my_row;}
     /*----------------------------------------------------------------*/
   };
   /*----------------------------------------------------------------*/

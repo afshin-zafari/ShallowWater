@@ -3,6 +3,15 @@
 #include "sw_dist.hpp"
 #include "util.hpp"
 namespace dtsw{
+  typedef byte* Buffer;
+  /*------------------------------------------*/
+  void read_var_D(const char *filename,
+		  std::vector< std::pair<uint32_t, uint32_t> > &idx,
+		  std::vector< quad<double> > &data);
+  void split(SpInfo  &M, int ny, int nx,int chunk_size);
+  void read_var_H(const char *filename,
+		  std::vector<double> &data);
+  //  void read_var_Atm(const char *filename,                    AtmArray &data);
   /*----------------------------------------*/
   void init(int argc, char *argv[]);
   void finalize();
@@ -32,7 +41,7 @@ namespace dtsw{
     int p,q,P;
     double dt;
     Partition_t partition_level[3];
-    char *filename;
+    char *data_path;
     double gh0;
   }Parameters_t;
   /*----------------------------------------*/
@@ -43,10 +52,18 @@ namespace dtsw{
     double ghm;
     double gradghm[3];
   }atmdata_t;
+  typedef atmdata_t *AtmArray;
+  typedef AtmArray  *AtmArrayAdr;
+  void read_var_Atm(const char *filename,
+		    AtmArray &data);
+  void read_var_H_block(const char *,
+			Buffer &,
+			int ,
+			int );
   /*----------------------------------------*/
 
   extern Parameters_t Parameters;
-  extern atmdata_t *Atm;
+  extern AtmArray Atm;
   extern SWAlgorithm *sw_engine;
   /*----------------------------------------*/
 }

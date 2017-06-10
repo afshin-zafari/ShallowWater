@@ -6,52 +6,62 @@ namespace dtsw{
   Data *H,*T,*D;
   Data *F1,*F2,*F3,*F4;
   Data *H1,*H2,*H3,*H4;
-  atmdata_t *Atm;
+  AtmArray Atm;
   SWAlgorithm *sw_engine;
   void parse_args(int argc,char *argv[]){
-    //argv: -M x x x -N x x x -
-    /*
-    Parameters.nb = 3;//todo : setting/getting Parameters
-    Parameters.dist.P = config.P;
-    Parameters.dist.p = config.p;
-    Parameters.dist.q = config.q;
-    Parameters.dist.rows_per_block = ;    
-    Parameters.dist.cols_per_block = ;
-    Parameters.dist.blocks_per_row = ;
-    Parameters.dist.blocks_per_col = ;
+    Parameters.partition_level[0].M              = config.M;
+    Parameters.partition_level[0].N              = config.N;
+    Parameters.partition_level[0].blocks_per_row = 1;
+    Parameters.partition_level[0].blocks_per_col = 1;
+    
+    Parameters.partition_level[1].M              = config.M / config.Mb;
+    Parameters.partition_level[1].N              = config.N / config.Nb;
+    Parameters.partition_level[1].blocks_per_row = config.Mb;
+    Parameters.partition_level[1].blocks_per_col = config.Nb;
 
-    Parameters.level2.rows_per_block = ;    
-    Parameters.level2.cols_per_block = ;
+    Parameters.partition_level[2].M              = config.M / config.Mb / config.mb;
+    Parameters.partition_level[2].N              = config.N / config.Nb / config.nb;
+    Parameters.partition_level[2].blocks_per_row = config.mb;
+    Parameters.partition_level[2].blocks_per_col = config.nb;
 
-    Parameters.dt=0.5;
-    strcpy(Parameters.filename,"");
-    Parameters.chunk_size = 0;
-    */
+    Parameters.P = config.P;
+    Parameters.p = config.p;
+    Parameters.q = config.q;
+    
+    Parameters.dt  = 0.5;
+    Parameters.gh0 = 0.1;//todo values of dt and gh0
+
+    strcpy(Parameters.data_path,"./data/");
     
   }
   /*----------------------------------------*/
   void init(int argc, char *argv[]){
     // import problem setup
+    const bool isSparse = true;
+    const bool notAllocate = true;
     dtEngine.start(argc,argv);
     sw_engine = new SWAlgorithm;
     parse_args(argc,argv);
     int nby = Parameters.partition_level[1].Mb;
     int nbx = Parameters.partition_level[1].Nb;
-    H  = new Data(nby, 1  ,"H" );
-    T  = new Data(nby, 1  ,"T" );
-    D  = new Data(nby, nbx,"D" );
-    F1 = new Data(nby, 1  ,"F1");
-    F2 = new Data(nby, 1  ,"F2");
-    F3 = new Data(nby, 1  ,"F3");
-    F4 = new Data(nby, 1  ,"F4");
+    int M = Parameters.partition_level[0].M;
+    int N = Parameters.partition_level[0].N;
+    H  = new Data(M,1,nby, 1  ,"H" , notAllocate );
+    T  = new Data(M,1,nby, 1  ,"T" );
+    D  = new Data(M,1,nby, nbx,"D" , isSparse    );
+    F1 = new Data(M,1,nby, 1  ,"F1");
+    F2 = new Data(M,1,nby, 1  ,"F2");
+    F3 = new Data(M,1,nby, 1  ,"F3");
+    F4 = new Data(M,1,nby, 1  ,"F4");
 
-    H1 = new Data(nby, 1  ,"H1");
-    H2 = new Data(nby, 1  ,"H2");
-    H3 = new Data(nby, 1  ,"H3");
-    H4 = new Data(nby, 1  ,"H4");
+    H1 = new Data(M,1,nby, 1  ,"H1");
+    H2 = new Data(M,1,nby, 1  ,"H2");
+    H3 = new Data(M,1,nby, 1  ,"H3");
+    H4 = new Data(M,1,nby, 1  ,"H4");
 
     SpInfo sp_info;
-    read_var_D(Parameters.filename,sp_info.index,sp_info.data);
+    string fn=Parameters.data_path+string("D");
+    read_var_D(fn.c_str(),sp_info.index,sp_info.data);
     split(sp_info,Parameters.partition_level[1].blocks_per_row,Parameters.partition_level[1].blocks_per_col,Parameters.partition_level[1].chunk_size);
     for(uint32_t i=0;i<sp_info.sp_blocks.size();i++){
       split(*sp_info.sp_blocks[i],Parameters.partition_level[2].blocks_per_row,
@@ -68,18 +78,6 @@ namespace dtsw{
 	dt.sg_data = p;
       }
     }
-    int nby2 = Parameters.partition_level[2].blocks_per_row;
-    int nbx2 = Parameters.partition_level[2].blocks_per_col;
-    H->partition_2nd_level(nby2,nbx2);
-    T->partition_2nd_level(nby2,nbx2);
-    F1->partition_2nd_level(nby2,nbx2);
-    F2->partition_2nd_level(nby2,nbx2);
-    F3->partition_2nd_level(nby2,nbx2);
-    F4->partition_2nd_level(nby2,nbx2);
-    H1->partition_2nd_level(nby2,nbx2);
-    H2->partition_2nd_level(nby2,nbx2);
-    H3->partition_2nd_level(nby2,nbx2);
-    H4->partition_2nd_level(nby2,nbx2);
     for(uint32_t i=0;i<sp_info.sp_blocks.size();i++){
       for(uint32_t j=0;j<sp_info.sp_blocks[i]->sp_blocks.size();j++){
 	SpInfo &sp = *sp_info.sp_blocks[i]->sp_blocks[j];
@@ -97,6 +95,29 @@ namespace dtsw{
       
     sp_info.data.clear();
     sp_info.index.clear();
+    int nby2 = Parameters.partition_level[2].blocks_per_row;
+    int nbx2 = 1; // All variables here are vectors    // Parameters.partition_level[2].blocks_per_col;
+    
+    fn = Parameters.data_path+string("H");
+    for(int block_index = 0; block_index < nby; block_index ++){
+      byte *mem ;
+      read_var_H_block(fn.c_str(),mem,nby ,block_index);
+      (*H)(block_index).set_memory(mem);
+    }
+
+    fn = Parameters.data_path+string("atm");
+    read_var_Atm(fn.c_str(),Atm);
+    
+     H->partition_2nd_level(nby2,nbx2);
+     T->partition_2nd_level(nby2,nbx2);
+    F1->partition_2nd_level(nby2,nbx2);
+    F2->partition_2nd_level(nby2,nbx2);
+    F3->partition_2nd_level(nby2,nbx2);
+    F4->partition_2nd_level(nby2,nbx2);
+    H1->partition_2nd_level(nby2,nbx2);
+    H2->partition_2nd_level(nby2,nbx2);
+    H3->partition_2nd_level(nby2,nbx2);
+    H4->partition_2nd_level(nby2,nbx2);
 
   }
   /*----------------------------------------*/
@@ -222,12 +243,14 @@ namespace dtsw{
   }
   /*----------------------------------------------------------------*/
   void SGSWData::partition_data(DTSWData &d,int R,int C){
-    rows = R; cols = C;      
+    rows = R; cols = C;
+    int block_size = d.level2_mem_size / R / C;
     dt_data = static_cast<Data *>(&d);
     for ( int i=0;i<rows;i++){
       for ( int j=0;j<cols;j++){
 	SGData *sgd = new SGData (i,j);
 	parts.push_back(sgd);
+	sgd->memory = d.get_memory() + (rows * j + i) * block_size * sizeof(quad<double>);
       }
     }
   }
