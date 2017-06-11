@@ -38,7 +38,7 @@ namespace dtsw{
     
     
     for(int i=0;i<a.get_blocks(); i++){
-      SGRHSTask *t = new SGRHSTask(a(i),b(i),c(i));
+      SGRHSTask *t = new SGRHSTask(atm_offset,a(i),b(i),c(i));
       sw_engine->subtask(this,t);
     }
   }
@@ -54,7 +54,7 @@ namespace dtsw{
     const double gh0 = Parameters.gh0;
 
     for (uint32_t i = 0; i < H.get_rows() ; ++i) {
-      const atmdata &a(Atm[H.get_row_index()+ i]);
+      const atmdata &a(Atm[H.get_row_index()*Parameters.atm_block_size_L2 + atm_offset+ i]);
 
       const double p = -(    H.v(i,0) * T.x(i,0)
 			   + H.v(i,1) * T.y(i,0)

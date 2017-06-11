@@ -5,7 +5,7 @@
 namespace dtsw{
   typedef byte* Buffer;
   /*------------------------------------------*/
-  void read_var_D(const char *filename,
+  uint64_t  read_var_D(const char *filename,
 		  std::vector< std::pair<uint32_t, uint32_t> > &idx,
 		  std::vector< quad<double> > &data);
   void split(SpInfo  &M, int ny, int nx,int chunk_size);
@@ -38,11 +38,12 @@ namespace dtsw{
   }Partition_t;
   /*----------------------------------------*/
   typedef struct parameters{
-    int p,q,P;
-    double dt;
+    int         p,q,P;
+    double      dt;
     Partition_t partition_level[3];
-    char *data_path;
-    double gh0;
+    char       *data_path;
+    double      gh0;
+    int         atm_block_size_L1,atm_block_size_L2;
   }Parameters_t;
   /*----------------------------------------*/
   typedef struct atmdata {
@@ -52,9 +53,11 @@ namespace dtsw{
     double ghm;
     double gradghm[3];
   }atmdata_t;
+  /*----------------------------------------*/
   typedef atmdata_t *AtmArray;
   typedef AtmArray  *AtmArrayAdr;
-  void read_var_Atm(const char *filename,
+  /*----------------------------------------*/
+  uint64_t  read_var_Atm(const char *filename,
 		    AtmArray &data);
   void read_var_H_block(const char *,
 			Buffer &,

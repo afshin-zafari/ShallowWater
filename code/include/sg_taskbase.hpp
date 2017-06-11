@@ -48,10 +48,12 @@ namespace dtsw{
   class SGRHSTask: public SGTask{
   private:
     SGData *a,*b,*c;
+    int atm_offset;
   public:
 
     /*---------------------------------------------------------*/
-    SGRHSTask(SGData &a_, SGData &b_,  SGData &c_){
+    SGRHSTask(int atm_,SGData &a_, SGData &b_,  SGData &c_){
+      atm_offset = atm_;
       a = &a_;
       b = &b_;
       c = &c_;

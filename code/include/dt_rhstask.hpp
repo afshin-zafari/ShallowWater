@@ -5,6 +5,7 @@ namespace dtsw{
   class RHSTask: public SWTask{
   private:
     Data *A,*B,*C;
+    int atm_offset;
   public:
     /*---------------------------------------------*/
     void dump(){
@@ -14,18 +15,7 @@ namespace dtsw{
                 << std::endl;
     }
     /*---------------------------------------------*/
-    RHSTask(Data &a, Data &b, Data &c,SWTask *p){
-      A = static_cast<Data *>(&a);
-      B = static_cast<Data *>(&b);
-      C = static_cast<Data *>(&c);
-      p = parent;
-      if(parent)
-	parent->child_count++;
-      *this << *A << *B >> *C;
-      key = RHS;
-      host = C->getHost();
-      setName("RHSTask");	  
-    }
+    RHSTask(Data &a, Data &b, Data &c,SWTask *p);
     /*---------------------------------------------*/
     virtual void runKernel();
   };

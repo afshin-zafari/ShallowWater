@@ -66,7 +66,7 @@ namespace dtsw{
   };
   typedef std::vector<SpInfo*> SpInfoList;
   /*------------------------------------------*/
-  void read_var_D(const char *filename,
+  uint64_t read_var_D(const char *filename,
 		  std::vector< std::pair<uint32_t, uint32_t> > &idx,
 		  std::vector< quad<double> > &data);
   void split(SpInfo  &M, int ny, int nx,int chunk_size);

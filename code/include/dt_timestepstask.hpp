@@ -27,7 +27,7 @@ namespace dtsw{
   private:
     int time_step;
   public:
-    static Data *D;
+    static IterationData *D;
     static int last_step ;
   /*---------------------------------------------------------------*/
     TimeStepsTask(){

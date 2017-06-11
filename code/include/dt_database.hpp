@@ -17,32 +17,7 @@ namespace dtsw{
     /*---------------------------------------------------------------------------*/
     DTSWData();
     /*---------------------------------------------------------------------------*/
-    DTSWData (int M, int N, int r,int c, std::string n, bool isSparse = false):name(n){
-      level2_mem_size = M*N*sizeof(quad<double>)/r/c;
-      for(int j=0;j<c;j++){
-	for(int i=0;i<r;i++){
-	  DTSWData*t=new DTSWData;
-	  t->row_idx = i;
-	  t->col_idx = j;
-	  t->sp_row  = i;
-	  t->sp_col  = j;
-	  if(!isSparse){
-	    t->level2_mem_size = level2_mem_size;
-	    t->memory = new byte[level2_mem_size];
-	  }
-	  std::stringstream ss;
-	  if ( c>1)
-	    ss << n << "(" << i << "," << j << ")";
-	  else
-	    ss << n << "(" << i <<  ")";
-	  t->setName(ss.str());
-	  name.assign(getName());
-	  Dlist.push_back(t);
-	}
-      }
-      rows = r;
-      cols = c;
-    }
+    DTSWData (int M, int N, int r,int c, std::string n, bool isSparse = false);
     /*---------------------------------------------------------------------------*/
     DTSWData &operator()(int i, int j){
       return *Dlist[j*rows + i];
@@ -67,9 +42,14 @@ namespace dtsw{
     }
     int get_rows(){return rows;}
     int get_cols(){return cols;}
+    int get_block_row(){return row_idx;}
     void partition_2nd_level(int nby,int nbx){
       for(auto d: Dlist){
-	d->sg_data->partition_data(*d,nby,nbx);
+	printf("%s(%d,%d) partitioned.\n",d->name.c_str(),d->row_idx,d->col_idx);
+	if (d->sg_data)
+	  d->sg_data->partition_data(*d,nby,nbx);
+	else
+	  printf("no sg data. \n");
       }
     }
     /*---------------------------------------------------------------------------*/
@@ -79,6 +59,10 @@ namespace dtsw{
 
   };
   typedef DTSWData Data;
+  class IterationData: public DTSWData {
+  public:
+    IterationData();
+  };
   
 }
 #endif //DT_DATABASE_HPP

@@ -1,29 +1,34 @@
 //#include "util.hpp"
 #include "dtsw.hpp"
 #include <algorithm>
+#include <assert.h>
 namespace dtsw{
   /*------------------------------------------*/
-  void read_var_D(const char * filename,
+  uint64_t  read_var_D(const char * filename,
 		  std::vector< std::pair<uint32_t, uint32_t> > &idx,
 		  std::vector< quad<double> > &data){
     FILE *f = fopen(filename,"rb");
+    printf("The input file for D operator is  %s (file *:%p).\n", filename,f);
     uint64_t  N,nnz;
     fread(&N,sizeof(uint64_t),1,f);
     fread(&nnz,sizeof(uint64_t),1,f);
-
+    printf("The input file for D operator is %dx%d and has  %d non-zero elements.\n", N,N,nnz);
     idx.resize(nnz);
     fread(&idx[0], sizeof(std::pair<uint32_t, uint32_t>), nnz, f) ;
 
     data.resize(nnz);
+    printf("D operator size is changed to:%d\n",data.size());
     fread(&data[0], sizeof(quad<double>), nnz, f) ;
 
     fclose(f);
+    return N;
 
   }
   /*------------------------------------------*/
   void split(SpInfo  &M, int ny, int nx,int chunk_size){
     M.num_blocks_x = nx;
     M.num_blocks_y = ny;
+    assert(chunk_size);
     for (int i=0;i<ny;i++){
       for(int j=0;j<nx;j++){
 	SpInfo  *spm = new SpInfo(i,j,true);
@@ -37,6 +42,8 @@ namespace dtsw{
       int blk_c = C / chunk_size;
       int rbegin = chunk_size * blk_r;
       int cbegin = chunk_size * blk_c;
+      //printf("R=%d,C=%d,rbegin=%d,cbegin=%d,blk_c=%d,ny=%d,blk_r=%d,M.sp_blocks.size()=%d\n",R,C,rbegin,cbegin,blk_c,ny,blk_r,M.sp_blocks.size());
+      assert(blk_c*ny + blk_r <M.sp_blocks.size());
       SpInfo &block = *M.sp_blocks[blk_c * ny + blk_r];
       block.data.push_back(M.data[i]);
       block.index.push_back(make_pair(R - rbegin,C - cbegin));
@@ -59,7 +66,7 @@ namespace dtsw{
     fclose(f);
   }
   /*------------------------------------------*/
-  void read_var_Atm(const char *filename,
+  uint64_t  read_var_Atm(const char *filename,
 		    AtmArray &data){
     FILE *f = fopen(filename,"rb");
     uint64_t M,N;
@@ -71,6 +78,7 @@ namespace dtsw{
     data = new atmdata_t[M*N];
     fread(&data[0],item_size,M*N,f);
     fclose(f);
+    return M*N;
   }
   /*------------------------------------------*/
   void read_var_H_block(const char *filename,
