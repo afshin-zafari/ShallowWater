@@ -2,9 +2,6 @@
 namespace dtsw{
   /*---------------------------------------------*/
   void AddTask::runKernel(){
-
-    
-    
     SGData &a = *A->sg_data;
     SGData &b = *B->sg_data;
     SGData &c = *C->sg_data;
@@ -13,7 +10,6 @@ namespace dtsw{
       SGAddTask *t = new SGAddTask(a(i),b(i),dt,c(i));
       sw_engine->subtask(this,t);
     }
-    
   }
   /*---------------------------------------------*/
   void SGAddTask::run(){
@@ -35,10 +31,12 @@ namespace dtsw{
     SGData &a = *A->sg_data;
     SGData &b = *B->sg_data;
     SGData &c = *C->sg_data;
+    LOG_INFO(LOG_DTSW,"RHS kernel calle.d\n");
     
     
     for(int i=0;i<a.get_blocks(); i++){
       SGRHSTask *t = new SGRHSTask(atm_offset,a(i),b(i),c(i));
+      LOG_INFO(LOG_DTSW,"SG RHS(%d) submitted.\n",i);
       sw_engine->subtask(this,t);
     }
   }
@@ -48,6 +46,7 @@ namespace dtsw{
     SGData &H(*a);
     SGData &T(*b);
     SGData &F(*c);
+    LOG_INFO(LOG_DTSW,"SG RHS Kernel called.\n");
     
     
     double d = H.v(0,0) +  H.x(0,0);
@@ -86,20 +85,31 @@ namespace dtsw{
     SGData &a = *A->sg_data;
     SGData &b = *B->sg_data;
     SGData &c = *C->sg_data;
+    LOG_INFO(LOG_DTSW,"Diff task Kernel called.\n");
 
     
     for(int i=0;i<a.get_blocks(); i++){
       SGDiffTask *t = new SGDiffTask(a(i),b(i),c(i));
+      LOG_INFO(LOG_DTSW,"SG Diff task(%d) is submitted.\n",i);
       sw_engine->subtask(this,t);
     }
   }
   /*---------------------------------------------*/
   void SGDiffTask::run(){
     SGData &A(*a),&B(*b),&C(*c);
+    LOG_INFO(LOG_DTSW,"SG Diff for %s task Kernel called.\n",A.get_name().c_str());
+
     for ( uint32_t i=0;i<A.get_sp_info().data.size(); i++){
       int r =  A.get_sp_info().index[i].first ;
       int c =  A.get_sp_info().index[i].second ;
-      C.get_data()[r] +=  A.get_sp_info().data[i] * B.get_data()[c];
+      LOG_INFO(LOG_DTSW,"C size :%d B. size : %d. \n",C.get_rows(),B.get_rows());
+      LOG_INFO(LOG_DTSW,"C:%p [%d] = D(%d) * B:%p [%d]\n",C.get_data(),r,i,B.get_data(), c);
+      for(int j=0;j<4;j++){
+	C.x(r,j) +=  A.get_sp_info().data[i].v[j] * B[c].v[j];
+	C.y(r,j) +=  A.get_sp_info().data[i].v[j] * B[c].v[j];
+	C.z(r,j) +=  A.get_sp_info().data[i].v[j] * B[c].v[j];
+	C.l(r,j) +=  A.get_sp_info().data[i].v[j] * B[c].v[j];
+      }
     }    
   }
   /*---------------------------------------------*/

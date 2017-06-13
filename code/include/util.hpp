@@ -6,6 +6,9 @@
 #include <cstdint>
 #include <iomanip>
 #include <cmath>
+
+#define LOG_DTSW 0xFFFFFFFF
+
 namespace dtsw{
   template<typename T>
   struct quad{
@@ -63,6 +66,15 @@ namespace dtsw{
     SpInfoList   sp_blocks;
     SpInfo(){}
     SpInfo(int i, int j,bool ){}
+    void report_data(){
+      LOG_INFO(LOG_DTSW,"Sparse Info has %d elements \n",data.size());
+      if (data.size()){
+	LOG_INFO(LOG_DTSW," from row %d and column %d.\n",rb,cb);
+      }
+      for(auto s:sp_blocks){
+	s->report_data();
+      }
+    }
   };
   typedef std::vector<SpInfo*> SpInfoList;
   /*------------------------------------------*/

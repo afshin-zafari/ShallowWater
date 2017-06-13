@@ -1,3 +1,4 @@
+
 #include "dtsw.hpp"
 #include "util.hpp"
 namespace dtsw{
@@ -8,6 +9,8 @@ namespace dtsw{
   Data *H1,*H2,*H3,*H4;
   AtmArray Atm;
   SWAlgorithm *sw_engine;
+  SpInfo *spD;
+  /*----------------------------------------*/
   void parse_args(int argc,char *argv[]){
     Parameters.partition_level[0].M              = config.M;
     Parameters.partition_level[0].N              = config.N;
@@ -40,18 +43,24 @@ namespace dtsw{
     // import problem setup
     const bool isSparse = true;
     const bool notAllocate = true;
+    const bool isDense = false;
+    const bool isQuadVec4 = true;
+    sw_engine = new SWAlgorithm;   
+    
     dtEngine.start(argc,argv);
-    sw_engine = new SWAlgorithm;
-    printf("After DuctTeip Init.\n");
+    LOG_INFO(LOG_DTSW,"After DuctTeip Init.\n");
     parse_args(argc,argv);
+
     int nby = Parameters.partition_level[1].Mb;
     int nbx = Parameters.partition_level[1].Nb;
     int M = Parameters.partition_level[0].M;
     int N = Parameters.partition_level[0].N;
-    printf("Defining DT Data .\n");
-    H  = new Data(M,1,nby, 1  ,"H" , notAllocate );
-    T  = new Data(M,1,nby, 1  ,"T" );
-    D  = new Data(M,1,nby, nbx,"D" , isSparse    );
+
+    LOG_INFO(LOG_DTSW,"Defining DT Data .\n");
+
+    H  = new Data(M,1,nby, 1  ,"H" , notAllocate             );
+    T  = new Data(M,1,nby, 1  ,"T" , isDense     , isQuadVec4);
+    D  = new Data(M,1,nby, nbx,"D" , isSparse                );
     F1 = new Data(M,1,nby, 1  ,"F1");
     F2 = new Data(M,1,nby, 1  ,"F2");
     F3 = new Data(M,1,nby, 1  ,"F3");
@@ -61,17 +70,23 @@ namespace dtsw{
     H2 = new Data(M,1,nby, 1  ,"H2");
     H3 = new Data(M,1,nby, 1  ,"H3");
     H4 = new Data(M,1,nby, 1  ,"H4");
+    spD = new SpInfo;
 
-    SpInfo sp_info;
+    SpInfo &sp_info=*spD;
     string fn=Parameters.data_path+string("D");
-    printf("Reading sparse D operator.\n");
+
+    LOG_INFO(LOG_DTSW,"Reading sparse D operator.\n");
+
     uint64_t  d_n = read_var_D(fn.c_str(),sp_info.index,sp_info.data);
     int chunk_size_L1 = d_n / Parameters.partition_level[1].blocks_per_row;
-    printf("Split sp by: %dx%d of %d size each.\n",Parameters.partition_level[1].blocks_per_row,Parameters.partition_level[1].blocks_per_col,chunk_size_L1);
+
+    LOG_INFO(LOG_DTSW,"Split sp by: %dx%d of %d size each.\n",Parameters.partition_level[1].blocks_per_row,Parameters.partition_level[1].blocks_per_col,chunk_size_L1);
+
     split(sp_info,Parameters.partition_level[1].blocks_per_row,Parameters.partition_level[1].blocks_per_col,chunk_size_L1);
     int chunk_size_L2 = chunk_size_L1/Parameters.partition_level[2].blocks_per_row;
     for(uint32_t i=0;i<sp_info.sp_blocks.size();i++){
-      printf("Second Level Split sp by: %dx%d of %d size each.\n",
+
+      LOG_INFO(LOG_DTSW,"Second Level Split sp by: %dx%d of %d size each.\n",
 	     Parameters.partition_level[2].blocks_per_row,
 	     Parameters.partition_level[2].blocks_per_col,
 	     chunk_size_L2);
@@ -82,8 +97,8 @@ namespace dtsw{
       
     }
     for(uint32_t i=0;i<nby ;i++){
-      int nby2 = Parameters.partition_level[2].rows_per_block;
-      int nbx2 = Parameters.partition_level[2].cols_per_block;
+      int nby2 = Parameters.partition_level[2].blocks_per_row;
+      int nbx2 = 1;
 
       (new SGData )->partition_data(  (*H)(i), nby2,nbx2);
       (new SGData )->partition_data(  (*T)(i), nby2,nbx2);
@@ -95,61 +110,88 @@ namespace dtsw{
       (new SGData )->partition_data( (*H2)(i), nby2,nbx2);
       (new SGData )->partition_data( (*H3)(i), nby2,nbx2);
       (new SGData )->partition_data( (*H4)(i), nby2,nbx2);
-           
+
+      nbx2 = Parameters.partition_level[2].blocks_per_col;
       for(uint32_t j=0;j<nbx ;j++){
-	printf("Partitioning D(%d,%d) into %dx%d sg_data.\n",i,j, Parameters.partition_level[2].rows_per_block,Parameters.partition_level[2].cols_per_block);
+	
+	LOG_INFO(LOG_DTSW,"Partitioning D(%d,%d) into %dx%d sg_data.\n",i,j,nby2,nbx2);
+
 	Data &dt = (*D)(i,j);
 	SGData *p = new SGData ;
-	p->partition_data ( dt, Parameters.partition_level[2].rows_per_block,
-			        Parameters.partition_level[2].cols_per_block);
+	p->partition_data(dt, nby2, nbx2);
 	dt.sg_data = p;
       }
     }
     for(uint32_t i=0;i<sp_info.sp_blocks.size();i++){
       for(uint32_t j=0;j<sp_info.sp_blocks[i]->sp_blocks.size();j++){
-	printf("Assign D %dx%d.\n",sp_info.sp_blocks.size(),sp_info.sp_blocks[i]->sp_blocks.size());
+	LOG_INFO(LOG_DTSW,"Assign D %dx%d.\n",sp_info.sp_blocks.size(),sp_info.sp_blocks[i]->sp_blocks.size());
 	SpInfo &sp = *sp_info.sp_blocks[i]->sp_blocks[j];
 	int R = D->get_rows();
 	Data &A = (*D)(i%R,i/R);
 	int K = A.sg_data->get_row_blocks();
-	int k = j%K;
-	int l = j/K;
-	printf("Assign D(%d,%d).SG(%d,%d).\n",i%R,i/R,k,l);
+	int k = j%K;	int l = j/K;
+	
+	LOG_INFO(LOG_DTSW,"Assign D(%d,%d).SG(%d,%d).\n",i%R,i/R,k,l);
+	
 	SGData &a = (*A.sg_data)(k,l);
-	a.set_sp_info(sp);
+	a.set_sp_info(sp_info.sp_blocks[i]->sp_blocks[j]);
       }
     }
     int nby2 = Parameters.partition_level[2].blocks_per_row;
-    int nbx2 = 1; // All variables here are vectors    // Parameters.partition_level[2].blocks_per_col;
+    int nbx2 = 1;
     fn = Parameters.data_path+string("H");
-    printf("Reading variable H from file %s.\n",fn.c_str());
+    
+    LOG_INFO(LOG_DTSW,"Reading variable H from file %s.\n",fn.c_str());
+    
     for(int block_index = 0; block_index < nby; block_index ++){
       byte *mem ;
-      printf("Reading variable H(%d) from file %s.\n",block_index,fn.c_str());
-      read_var_H_block(fn.c_str(),mem,nby ,block_index);
+      
+      LOG_INFO(LOG_DTSW,"Reading variable H(%d) from file %s.\n",block_index,fn.c_str());
+      
+      int block_size = read_var_H_block(fn.c_str(),mem,nby ,block_index);
       (*H)(block_index).set_memory(mem);
+      (*H)(block_index).setHost(block_index % Parameters.P);
+      (*H)(block_index).setHostType(IData::SINGLE_HOST);
+      LOG_INFO(LOG_DTSW,"Host for H(%d) is set to %d .\n",block_index,block_index % Parameters.P);
     }
     fn = Parameters.data_path+string("atm");
-    printf("Reading Attm fromom file %s.\n",fn.c_str());
+    
+    LOG_INFO(LOG_DTSW,"Reading Attm fromom file %s.\n",fn.c_str());
+    
     uint64_t size=read_var_Atm(fn.c_str(),Atm);
     Parameters.atm_block_size_L1 = size/nby;
     Parameters.atm_block_size_L2 = size/nby/nby2;
-    printf("Partitioning variables for 2nd level.\n");
-    H->partition_2nd_level(nby2,nbx2);printf("H partitioned.\n");
-     T->partition_2nd_level(nby2,nbx2);printf("T partitioned.\n");
-    F1->partition_2nd_level(nby2,nbx2);printf("F1 partitioned.\n");
+    
+    LOG_INFO(LOG_DTSW,"Partitioning variables for 2nd level.\n");
+    
+    H->partition_2nd_level(nby2,nbx2);
+     T->partition_2nd_level(nby2,nbx2);
+    F1->partition_2nd_level(nby2,nbx2);
     F2->partition_2nd_level(nby2,nbx2);
     F3->partition_2nd_level(nby2,nbx2);
     F4->partition_2nd_level(nby2,nbx2);
-    H1->partition_2nd_level(nby2,nbx2);printf("H1 partitioned.\n");
+    H1->partition_2nd_level(nby2,nbx2);
     H2->partition_2nd_level(nby2,nbx2);
     H3->partition_2nd_level(nby2,nbx2);
     H4->partition_2nd_level(nby2,nbx2);
-    printf("All partitioned.\n");
+    
+    LOG_INFO(LOG_DTSW,"All partitioned.\n");
+    
+    H->report_data();
+    D->report_data();
+    F1->report_data();
+    F2->report_data();
+    F3->report_data();
+    F4->report_data();
+
+    H1->report_data();
+    H2->report_data();
+    H3->report_data();
+    H4->report_data();
+
   }
   /*----------------------------------------*/
   void finalize(){
-    //sw_engine->dump_tasks();
     sw_engine->finalize();
     delete D;
     delete T;
@@ -168,10 +210,11 @@ namespace dtsw{
   /*----------------------------------------*/
   void mult(Data *t,Data *d, Data *h, SWTask *p){
     Data &_D(*d),&_H(*h), &_T(*t);
-    
+    LOG_INFO(LOG_DTSW,"\n");
     for(int i=0; i< _D.get_rows(); i++){
       for(int j=0; j< _D.get_cols(); j++){
 	DiffTask *Diff = new DiffTask(_D(i,j),_H(j),_T(j),p);
+	LOG_INFO(LOG_DTSW,"Diff task (%d,%d) submitted.\n",i,j);
 	sw_engine->submit(Diff);
       }
     }
@@ -182,6 +225,7 @@ namespace dtsw{
     int nb = Parameters.partition_level[1].blocks_per_row;
     for(int i=0; i< nb; i++){
       RHSTask *RHS= new RHSTask(_T(i),_H(i),DH(i),p);
+      LOG_INFO(LOG_DTSW,"RHS task (%d) submitted.\n",i);
       sw_engine->submit(RHS);
     }
   }
@@ -211,7 +255,7 @@ namespace dtsw{
   /*----------------------------------------------------*/
   IterationData *TimeStepsTask::D = nullptr;
   int TimeStepsTask::last_step=0;
-  void run(){
+  void run(int argc, char *argv[]){
     TimeStepsTask::D = new IterationData();    
     sw_engine->submit(new TimeStepsTask);    
     sw_engine->submit(new TimeStepsTask);        
@@ -229,9 +273,11 @@ namespace dtsw{
   /*----------------------------------------------------*/
   void runStep(SWTask *p){
     double dt = Parameters.dt;
+    LOG_INFO(LOG_DTSW,"f(F1,H) is called.\n");
     f(F1,H, p);                      // F1 = f(H)
-    add(H1, H , 0.5*dt, F1 , p);     // H1 = H + 0.5*dt*F1
+    
     return;
+    add(H1, H , 0.5*dt, F1 , p);     // H1 = H + 0.5*dt*F1
     f(F2,H1,p);
     add(H2, H , 0.5*dt, F2 , p);     // H2 = H + 0.5*dt*F2
     f(F3,H2,p);
@@ -248,7 +294,7 @@ namespace dtsw{
       D->setRunTimeVersion("0.0",0);      
     IDuctteipTask::key = key;
     DataAccessList *dlist = new DataAccessList;    
-    data_access(dlist,D,last_step %2?IData::READ:IData::WRITE);
+    data_access(dlist,D,(last_step %2)?IData::READ:IData::WRITE);
     cout << "TS arg count: " << dlist->size() << endl;
     setDataAccessList(dlist);      
     host = me;
@@ -289,16 +335,27 @@ namespace dtsw{
     int block_size = d.level2_mem_size / R / C;
     dt_data = static_cast<Data *>(&d);
     d.sg_data = this;
+    my_row=my_col=-1;
+    memory = nullptr;
+    parts.clear();
+    name.assign("_"+d.name);
+    LOG_INFO(LOG_DTSW,"New SGData will be made from parent memory at:%p , R:%d,C:%d, Blk_size:%d, Szof(quad):%d\n",d.get_memory(), R,C, block_size, sizeof(quad<double>) ); 
+
     for ( int i=0;i<rows;i++){
       for ( int j=0;j<cols;j++){
 	SGData *sgd = new SGData (i,j);
 	parts.push_back(sgd);
 	sgd->memory = d.get_memory() + (rows * j + i) * block_size * sizeof(quad<double>);
+	sgd->elem_rows = block_size * sizeof(quad<double>);
+	sgd->     data = (quad<double>*) sgd->memory;
+	sgd->pack_data = (DataPackList*) sgd->memory;
+	LOG_INFO(LOG_DTSW,"Resulting memory for sg(%d,%d) is :%p with size of :%d\n",i,j,sgd->memory,sgd->elem_rows);
+	sgd->name.assign(d.name + "_");
       }
     }
   }
   /*----------------------------------------------------------------------------*/
-  DTSWData::DTSWData (int M, int N, int r,int c, std::string n, bool isSparse)
+  DTSWData::DTSWData (int M, int N, int r,int c, std::string n, bool isSparse,bool isQuadVec4)
     :name(n){
       level2_mem_size = M*N*sizeof(quad<double>)/r/c;
       for(int j=0;j<c;j++){
@@ -308,31 +365,34 @@ namespace dtsw{
 	  t->col_idx = j;
 	  t->sp_row  = i;
 	  t->sp_col  = j;
-	  if(!isSparse){
-	    t->level2_mem_size = level2_mem_size;
-	    t->memory = new byte[level2_mem_size];
-	    t->setHost(j%Parameters.P);
-	    t->setHostType(SINGLE_HOST);
-	  }
 	  std::stringstream ss;
 	  if ( c>1)
 	    ss << n << "(" << i << "," << j << ")";
 	  else
 	    ss << n << "(" << i <<  ")";
-	  t->setName(ss.str());
-	  name.assign(getName());
+	  t->name.assign(ss.str());
+	  if(!isSparse){
+	    t->level2_mem_size = level2_mem_size *(isQuadVec4?4:1);
+	    t->memory = new byte[level2_mem_size];
+	    LOG_INFO(LOG_DTSW,"Host for %s is set to %d modu %d   = %d .\n",ss.str().c_str(),i,Parameters.P,i%Parameters.P);
+	    t->setHost(i%Parameters.P);	    
+	    t->setHostType(SINGLE_HOST);
+	  }
+	  t->sg_data =nullptr;
 	  Dlist.push_back(t);
 	}
       }
       rows = r;
       cols = c;
+      row_idx=col_idx = -1;
+      sg_data = nullptr;
     }
   /*---------------------------------------------*/
   RHSTask::RHSTask(Data &a, Data &b, Data &c,SWTask *p){
     A = static_cast<Data *>(&a);
     B = static_cast<Data *>(&b);
     C = static_cast<Data *>(&c);
-    p = parent;
+    parent = p;
     atm_offset = a.get_block_row() * Parameters.atm_block_size_L1;
     if(parent)
       parent->child_count++;
@@ -340,6 +400,29 @@ namespace dtsw{
     key = RHS;
     host = C->getHost();
     setName("RHSTask");	  
+  }
+  /*---------------------------------------------*/
+  void DTSWData::report_data(){
+    LOG_INFO(LOG_DTSW,"Data %s at (%d,%d) has memory at address:%p\n",name.c_str(),row_idx,col_idx,memory );
+    for(auto d:Dlist){
+      d->report_data();
+    }
+    if (sg_data)
+      sg_data->report_data();
+  }
+  /*---------------------------------------------*/
+  void SGSWData ::report_data(){
+    if ( name.size() ){
+      LOG_INFO(LOG_DTSW,"SGData %s at (%d,%d) has memory :%p, and SParse Info ptr:%p.\n",name.c_str(),my_row,my_col,memory,sp_info);
+    }
+    else{
+      LOG_INFO(LOG_DTSW,"SGData ?? at (%d,%d) has memory :%p, and SParse Info ptr:%p.\n",my_row,my_col,memory,sp_info);
+    }
+    if (sp_info)
+      sp_info->report_data();
+    for(auto sd: parts){
+      sd->report_data();
+    }
   }
 }
 

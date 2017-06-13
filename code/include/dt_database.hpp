@@ -17,7 +17,7 @@ namespace dtsw{
     /*---------------------------------------------------------------------------*/
     DTSWData();
     /*---------------------------------------------------------------------------*/
-    DTSWData (int M, int N, int r,int c, std::string n, bool isSparse = false);
+    DTSWData (int M, int N, int r,int c, std::string n, bool isSparse = false, bool isQuadVec4=false);
     /*---------------------------------------------------------------------------*/
     DTSWData &operator()(int i, int j){
       return *Dlist[j*rows + i];
@@ -45,16 +45,17 @@ namespace dtsw{
     int get_block_row(){return row_idx;}
     void partition_2nd_level(int nby,int nbx){
       for(auto d: Dlist){
-	printf("%s(%d,%d) partitioned.\n",d->name.c_str(),d->row_idx,d->col_idx);
+	LOG_INFO(LOG_DTSW,"%s(%d,%d) partitioned.\n",d->name.c_str(),d->row_idx,d->col_idx);
 	if (d->sg_data)
 	  d->sg_data->partition_data(*d,nby,nbx);
 	else
-	  printf("no sg data. \n");
+	  LOG_INFO(LOG_DTSW,"no sg data. \n");
       }
     }
     /*---------------------------------------------------------------------------*/
     byte *get_memory(){return memory;}
     void set_memory(byte *mem){memory=mem;}
+    void report_data();
     /*---------------------------------------------------------------------------*/
 
   };

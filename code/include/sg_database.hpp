@@ -15,7 +15,7 @@ namespace dtsw{
   typedef Handle <Options> SGHandle;
   /*----------------------------------------------------------------*/
   struct DataPack{
-    double x[3],y[3],z[3],l[3],v[3];
+    quad<double> data[4];
   };
   /*----------------------------------------------------------------*/
   typedef vector<DataPack> DataPackList;
@@ -31,15 +31,16 @@ namespace dtsw{
     SGDataList   parts;
     SGHandle     sg_handle;
     double       val;
-    DataPackList pack_data;
-    SpInfo       sp_info;
+    DataPackList *pack_data;
+    SpInfo       *sp_info;
     byte         *memory;
+    string       name;
   public:
     /*----------------------------------------------------------------*/
-    SGSWData(){}
+    SGSWData(){sp_info = nullptr;}
     void partition_data(DTSWData &d,int R,int C);
     /*----------------------------------------------------------------*/
-    SGSWData(int i, int j){my_row=i;my_col=j;}
+    SGSWData(int i, int j){my_row=i;my_col=j;sp_info = nullptr;}
     /*----------------------------------------------------------------*/
     SGHandle&get_sg_handle(){return sg_handle;}
     /*----------------------------------------------------------------*/
@@ -58,23 +59,23 @@ namespace dtsw{
     }
     /*----------------------------------------------------------------*/
     double &v(int i, int j){
-      return pack_data[i].v[j];
+      return data[i].v[j];
     }
     /*----------------------------------------------------------------*/
     double  &x(int i, int j){      
-      return pack_data[i].x[j];
+      return (*pack_data)[i].data[0].v[j];
     }
     /*----------------------------------------------------------------*/
     double  &y(int i, int j){
-      return pack_data[i].y[j];
+      return (*pack_data)[i].data[1].v[j];
     }
     /*----------------------------------------------------------------*/
     double  &z(int i, int j){
-      return pack_data[i].z[j];
+      return (*pack_data)[i].data[2].v[j];
     }
     /*----------------------------------------------------------------*/
     double  &l(int i, int j){
-      return pack_data[i].l[j];
+      return (*pack_data)[i].data[3].v[j];
     }
     /*----------------------------------------------------------------*/
     quad<double>  &operator[](int i){
@@ -83,14 +84,20 @@ namespace dtsw{
     /*----------------------------------------------------------------*/
     quad<double> *get_data(){return data;}
     /*----------------------------------------------------------------*/
-    SpInfo &get_sp_info(){return sp_info;}
-    void set_sp_info(SpInfo &sp){sp_info.sp_blocks = sp.sp_blocks;}
-    int get_row_index(){return my_row;}
+    SpInfo &get_sp_info(){return *sp_info;}
+    void    set_sp_info(SpInfo *sp){sp_info = sp;}
+    int     get_row_index(){return my_row;}
+    void    report_data();
+    string  get_name(){return name;}
+    void    set_rows(int n){elem_rows = n;}
     /*----------------------------------------------------------------*/
   };
   /*----------------------------------------------------------------*/
   typedef SGSWData SGData;
-  typedef vector<SGData *> SGDataList;  
+  typedef vector<SGData *> SGDataList;
+  class TData : public SGSWData {
+  public:
+  };
   /*----------------------------------------------------------------*/
 }
 #endif //SG_DATABASE_HPP

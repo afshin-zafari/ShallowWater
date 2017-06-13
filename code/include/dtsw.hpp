@@ -15,7 +15,7 @@ namespace dtsw{
   /*----------------------------------------*/
   void init(int argc, char *argv[]);
   void finalize();
-  void run();
+  void run(int , char *[]);
   /*----------------------------------------*/
   typedef struct Partition{    
     union {
@@ -59,7 +59,7 @@ namespace dtsw{
   /*----------------------------------------*/
   uint64_t  read_var_Atm(const char *filename,
 		    AtmArray &data);
-  void read_var_H_block(const char *,
+  int  read_var_H_block(const char *,
 			Buffer &,
 			int ,
 			int );

@@ -8,18 +8,18 @@ namespace dtsw{
 		  std::vector< std::pair<uint32_t, uint32_t> > &idx,
 		  std::vector< quad<double> > &data){
     FILE *f = fopen(filename,"rb");
-    printf("The input file for D operator is  %s (file *:%p).\n", filename,f);
+    LOG_INFO(LOG_DTSW,"The input file for D operator is  %s (file *:%p).\n", filename,f);
     uint64_t  N,nnz;
     fread(&N,sizeof(uint64_t),1,f);
     fread(&nnz,sizeof(uint64_t),1,f);
-    printf("The input file for D operator is %dx%d and has  %d non-zero elements.\n", N,N,nnz);
+    LOG_INFO(LOG_DTSW,"The input file for D operator is %dx%d and has  %d non-zero elements.\n", N,N,nnz);
     idx.resize(nnz);
     fread(&idx[0], sizeof(std::pair<uint32_t, uint32_t>), nnz, f) ;
 
     data.resize(nnz);
-    printf("D operator size is changed to:%d\n",data.size());
-    fread(&data[0], sizeof(quad<double>), nnz, f) ;
-
+    LOG_INFO(LOG_DTSW,"D operator size is changed to:%d\n",data.size());
+    long actual_read = fread(&data[0], sizeof(quad<double>), nnz, f) ;
+    LOG_INFO(LOG_DTSW,"Requested to read: %ld, actual read %ld.\n", nnz, actual_read);
     fclose(f);
     return N;
 
@@ -35,6 +35,7 @@ namespace dtsw{
 	M.sp_blocks.push_back(spm);
       }
     }
+    LOG_INFO(LOG_DTSW,"size of sparse data to split:%d\n",M.data.size());
     for(uint32_t i=0; i < M.data.size(); i++){
       int R = M.index[i].first;
       int C = M.index[i].second;
@@ -51,6 +52,7 @@ namespace dtsw{
       block.cb = cbegin;
       block.empty = false;
     }
+    LOG_INFO(LOG_DTSW,"Data split finished.\n");
   }
   /*------------------------------------------*/
   void read_var_H(const char *filename,
@@ -81,7 +83,7 @@ namespace dtsw{
     return M*N;
   }
   /*------------------------------------------*/
-  void read_var_H_block(const char *filename,
+  int  read_var_H_block(const char *filename,
 			Buffer &memory,
 			int block_count,
 			int block_index){
@@ -93,8 +95,9 @@ namespace dtsw{
     size_t item_size = sizeof(double) * 4; // each row of H has 4 elements;
     fseek(f,block_index * item_count * item_size  ,SEEK_CUR);
     memory = new byte[item_count * item_size];
-    fread(&memory[0],item_size,item_count,f);
+    item_count = fread(&memory[0],item_size,item_count,f);
     fclose(f);
+    return item_count * item_size;
   }
   /*======================================================================*/
   /*------------------------------------------*/

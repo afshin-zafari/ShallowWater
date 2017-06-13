@@ -16,7 +16,7 @@ int main(int argc , char *argv[])
 
    
     dtsw::init(argc,argv);
-    dtsw::run();
+    dtsw::run(argc,argv);
     dtsw::finalize();
     
 
