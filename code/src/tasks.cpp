@@ -5,6 +5,7 @@ namespace dtsw{
     SGData &a = *A->sg_data;
     SGData &b = *B->sg_data;
     SGData &c = *C->sg_data;
+    LOG_INFO(LOG_DTSW,"Add task :%s kernel called\n",getName().c_str());
     
     for(int i=0;i<a.get_blocks(); i++){
       SGAddTask *t = new SGAddTask(a(i),b(i),dt,c(i));
@@ -16,6 +17,7 @@ namespace dtsw{
     SGData &A = *a;
     SGData &B = *b;
     SGData &C = *c;
+    LOG_INFO(LOG_DTSW,"SG Add task for parent:%s kernel called\n",get_parent()->getName().c_str());
     if ( !A.get_data())
       return;
     if ( !B.get_data())
@@ -31,7 +33,7 @@ namespace dtsw{
     SGData &a = *A->sg_data;
     SGData &b = *B->sg_data;
     SGData &c = *C->sg_data;
-    LOG_INFO(LOG_DTSW,"RHS kernel calle.d\n");
+    LOG_INFO(LOG_DTSW,"RHS kernel called.\n");
     
     
     for(int i=0;i<a.get_blocks(); i++){
@@ -51,7 +53,6 @@ namespace dtsw{
     
     double d = H.v(0,0) +  H.x(0,0);
     const double gh0 = Parameters.gh0;
-
     for (uint32_t i = 0; i < H.get_rows() ; ++i) {
       const atmdata &a(Atm[H.get_row_index()*Parameters.atm_block_size_L2 + atm_offset+ i]);
 
@@ -90,8 +91,8 @@ namespace dtsw{
     
     for(int i=0;i<a.get_blocks(); i++){
       SGDiffTask *t = new SGDiffTask(a(i),b(i),c(i));
-      LOG_INFO(LOG_DTSW,"SG Diff task(%d) is submitted.\n",i);
       sw_engine->subtask(this,t);
+      LOG_INFO(LOG_DTSW,"SG Diff task(%d) is submitted, parent's children#:%d.\n",i,(int)t->get_parent()->child_count);
     }
   }
   /*---------------------------------------------*/
@@ -101,14 +102,25 @@ namespace dtsw{
 
     for ( uint32_t i=0;i<A.get_sp_info().data.size(); i++){
       int r =  A.get_sp_info().index[i].first ;
-      int c =  A.get_sp_info().index[i].second ;
-      LOG_INFO(LOG_DTSW,"C size :%d B. size : %d. \n",C.get_rows(),B.get_rows());
-      LOG_INFO(LOG_DTSW,"C:%p [%d] = D(%d) * B:%p [%d]\n",C.get_data(),r,i,B.get_data(), c);
-      for(int j=0;j<4;j++){
-	C.x(r,j) +=  A.get_sp_info().data[i].v[j] * B[c].v[j];
-	C.y(r,j) +=  A.get_sp_info().data[i].v[j] * B[c].v[j];
-	C.z(r,j) +=  A.get_sp_info().data[i].v[j] * B[c].v[j];
-	C.l(r,j) +=  A.get_sp_info().data[i].v[j] * B[c].v[j];
+      int col =  A.get_sp_info().index[i].second ;
+      //      if(1)
+      {
+	/*
+	LOG_INFO(LOG_DTSW,"C size :%d B. size : %d. \n",C.get_mem_size_in_elems(),B.get_mem_size_in_elems());
+	LOG_INFO(LOG_DTSW,"C:%p (%d) = D(%d) * B:%p (%d)\n",C.get_data(),r,i,B.get_data(), col);
+	double temp = B[col].v[0];
+	LOG_INFO(LOG_DTSW,"%lf\n",temp);
+	temp = A.get_sp_info().data[i].v[0];
+	LOG_INFO(LOG_DTSW,"%lf\n",temp);
+	temp = C.x(r,0);
+	LOG_INFO(LOG_DTSW,"%lf\n",temp);
+	*/
+	for(int j=0;j<4;j++){
+	  C.x(r,j) +=  A.get_sp_info().data[i].v[j] * B[col].v[j];
+	  C.y(r,j) +=  A.get_sp_info().data[i].v[j] * B[col].v[j];
+	  C.z(r,j) +=  A.get_sp_info().data[i].v[j] * B[col].v[j];
+	  C.l(r,j) +=  A.get_sp_info().data[i].v[j] * B[col].v[j];
+	}
       }
     }    
   }

@@ -8,16 +8,17 @@ namespace dtsw{
   class DTSWData : public IData {
   private:
     std::vector <DTSWData *> Dlist;
-    int rows,cols,row_idx,col_idx,host;
-    byte *memory;
+    int rows,cols,row_idx,col_idx,host2;
+    byte *memory_p;
+    int mem_size_in_bytes, mem_size_in_elements,item_size;
   public:
     SGData *sg_data;
-    int sp_row,sp_col,level2_mem_size;
-    std::string name;
+    int sp_row,sp_col;
+    std::string name_dep;
     /*---------------------------------------------------------------------------*/
     DTSWData();
     /*---------------------------------------------------------------------------*/
-    DTSWData (int M, int N, int r,int c, std::string n, bool isSparse = false, bool isQuadVec4=false);
+    DTSWData (int M, int N, int r,int c, std::string n, int , int , bool isSparse = false);
     /*---------------------------------------------------------------------------*/
     DTSWData &operator()(int i, int j){
       return *Dlist[j*rows + i];
@@ -30,19 +31,21 @@ namespace dtsw{
     int size(){return rows*cols;}
     /*---------------------------------------------------------------------------*/
     void getExistingMemoryInfo(byte **b, int *s, int *l){
-      *b = (byte *)memory;
-      *s = level2_mem_size;
+      LOG_INFO(LOG_DTSW,"Reported memory:%p with size %d for data %s.\n",
+	       memory_p,mem_size_in_bytes,getName().c_str());
+      *b = (byte *)memory_p;
+      *s = mem_size_in_bytes;
       *l = 1;
     }
     /*---------------------------------------------------------------------------*/
     void setNewMemoryInfo(MemoryItem*mi){
-      //M = level2_mem_size / sizeof (quad<double>);
-      //N = 1;
-      memory = (byte*)(mi->getAddress()+getHeaderSize());
+      memory_p = (byte*)(mi->getAddress()+getHeaderSize());
     }
+    /*---------------------------------------------------------------------------*/
     int get_rows(){return rows;}
     int get_cols(){return cols;}
     int get_block_row(){return row_idx;}
+    /*---------------------------------------------------------------------------*/
     void partition_2nd_level(int nby,int nbx){
       for(auto d: Dlist){
 	LOG_INFO(LOG_DTSW,"%s(%d,%d) partitioned.\n",d->name.c_str(),d->row_idx,d->col_idx);
@@ -53,9 +56,13 @@ namespace dtsw{
       }
     }
     /*---------------------------------------------------------------------------*/
-    byte *get_memory(){return memory;}
-    void set_memory(byte *mem){memory=mem;}
+    byte *get_memory(){return memory_p;}
+    void set_memory(byte *mem,int size,int n){memory_p=mem;mem_size_in_bytes = size;mem_size_in_elements = n;}
     void report_data();
+    int get_mem_size_in_bytes(){return mem_size_in_bytes;}
+    int get_mem_size_in_elems(){return mem_size_in_elements;}
+    int get_item_size(){return item_size;}
+    
     /*---------------------------------------------------------------------------*/
 
   };

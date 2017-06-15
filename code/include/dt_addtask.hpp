@@ -13,19 +13,21 @@ namespace dtsw{
       B = static_cast<Data *>(&b);
       C = static_cast<Data *>(&c);
       dt=d;
+      host = C->getHost();
       parent = p;
-      if ( parent )
-	parent->child_count ++;
+      child_count = 0 ;
+      if ( host == me )
+	if ( parent )
+	  parent->child_count ++;
       *this << *A << *B	>> *C;
       key = ADD;
-      host = C->getHost();
       setName("AddTask");      
     }
     /*----------------------------------------------*/
     void dump(){
-      std::cout << "Add  " << A->name <<" "
-                << B->name <<" "
-                << C->name <<" "
+      std::cout << "Add  " << A->getName() <<" "
+                << B->getName() <<" "
+                << C->getName() <<" "
                 << std::endl;
     }
     /*----------------------------------------------*/

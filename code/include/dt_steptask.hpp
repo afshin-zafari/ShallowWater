@@ -8,11 +8,11 @@ namespace dtsw{
   public:
     /*------------------------------------------------------------*/
     void dump(){
-      std::cout << "Step " << A->name <<" "
-                << B->name <<" "
-                << C->name <<" "
-                << D->name <<" "
-                << E->name <<" "
+      std::cout << "Step " << A->getName() <<" "
+                << B->getName() <<" "
+                << C->getName() <<" "
+                << D->getName() <<" "
+                << E->getName() <<" "
 		<< std::endl;
     }
     /*------------------------------------------------------------*/
@@ -23,11 +23,13 @@ namespace dtsw{
       D = static_cast<Data *>(&d);
       E = static_cast<Data *>(&e);
       parent = p;
-      if (parent)
-	parent->child_count ++;
+      child_count = 0;
+      host = E->getHost();
+      if ( host == me ) 
+	if (parent)
+	  parent->child_count ++;
       key = STEP;
       *this <<*A <<*B << *C <<*D >> *E;
-      host = E->getHost();
       setName("StepTask");
     }
     /*------------------------------------------------------------*/

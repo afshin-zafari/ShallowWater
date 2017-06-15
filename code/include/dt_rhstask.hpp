@@ -9,9 +9,9 @@ namespace dtsw{
   public:
     /*---------------------------------------------*/
     void dump(){
-      std::cout << "RHS  " << A->name <<" "
-                << B->name <<" "
-                << C->name <<" "
+      std::cout << "RHS  " << A->getName() <<" "
+                << B->getName() <<" "
+                << C->getName() <<" "
                 << std::endl;
     }
     /*---------------------------------------------*/

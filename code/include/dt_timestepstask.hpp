@@ -33,6 +33,7 @@ namespace dtsw{
     TimeStepsTask(){
       time_step = last_step++;
       register_data();
+      child_count =0;
     }
   /*---------------------------------------------------------------*/
     void runKernel();
@@ -41,7 +42,7 @@ namespace dtsw{
     void dump(){
       std::cout << "TimeStep  "<< time_step << " ";		
       if (D)
-	std::cout << D->name <<" ";
+	std::cout << D->getName() <<" ";
       
     std:cout << std::endl;
     }

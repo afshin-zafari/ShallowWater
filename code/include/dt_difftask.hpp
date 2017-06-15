@@ -11,21 +11,24 @@ namespace dtsw{
       A = static_cast<Data *>(&a);
       B = static_cast<Data *>(&b);
       C = static_cast<Data *>(&c);
+      child_count = 0;
       parent = p;
-      if ( p)
-	p->child_count ++;
-      *this << *A << *B >> *C;
-      key = DIFF;
       host = C->getHost();
+      LOG_INFO(LOG_DTSW,"host of Diff task %d\n",getHost());
+      if ( getHost() == me ) 
+	if (p)
+	  p->child_count ++;
+      *this << *B >> *C;
+      key = DIFF;
       setName("DiffTask");
     }
     /*------------------------------------------------------------*/
     void runKernel();
     /*------------------------------------------------------------*/
     void dump(){
-      std::cout << "Diff " << A->name <<" "
-                << B->name <<" "
-                << C->name <<" "
+      std::cout << "Diff " << A->getName() <<" "
+                << B->getName() <<" "
+                << C->getName() <<" "
                 << std::endl;
     }
   };

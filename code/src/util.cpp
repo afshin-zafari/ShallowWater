@@ -91,8 +91,9 @@ namespace dtsw{
     uint64_t M,N;
     fread(&M,sizeof(uint64_t),1,f);
     fread(&N,sizeof(uint64_t),1,f);
-    int item_count = M*N/block_count ;
+    int item_count = M*N/block_count/4 ;
     size_t item_size = sizeof(double) * 4; // each row of H has 4 elements;
+    LOG_INFO(LOG_DTSW,"%d,%d,%d,%d,%d,%d\n",M,N,item_count,item_size,block_index,block_index * item_count * item_size);
     fseek(f,block_index * item_count * item_size  ,SEEK_CUR);
     memory = new byte[item_count * item_size];
     item_count = fread(&memory[0],item_size,item_count,f);

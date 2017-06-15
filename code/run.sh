@@ -24,7 +24,7 @@ N=6400
 JobID=${SLURM_JOB_ID}
 app=./bin/dtsw 
 
-params="-P $P -p $p -q $q -M $N $B $b -N $N $B $b -t $nt --ipn $ipn --timeout 200"
+params="-P $P -p $p -q $q -M $N $B $b -N $N $B $b -t $nt --ipn $ipn --timeout 100"
 echo "Params: $params"
 tempdir=./temp
 mkdir -p $tempdir

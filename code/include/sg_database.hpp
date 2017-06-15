@@ -18,7 +18,7 @@ namespace dtsw{
     quad<double> data[4];
   };
   /*----------------------------------------------------------------*/
-  typedef vector<DataPack> DataPackList;
+  typedef DataPack *DataPackList;
   /*===================================================================*/
   class DTSWData;
   class SGSWData{
@@ -27,24 +27,23 @@ namespace dtsw{
     typedef vector<SGData *> SGDataList;
     quad<double>      *data;
     DTSWData         *dt_data;
-    int          rows,cols,elem_rows,elem_cols,my_row,my_col;
+    int          rows,cols,elem_rows_deprec,elem_cols_dep,my_row,my_col;
     SGDataList   parts;
     SGHandle     sg_handle;
     double       val;
-    DataPackList *pack_data;
+    DataPack     *pack_data;
     SpInfo       *sp_info;
-    byte         *memory;
+    byte         *memory_p;
+    int           mem_size_in_bytes,mem_size_in_elements;
     string       name;
   public:
     /*----------------------------------------------------------------*/
-    SGSWData(){sp_info = nullptr;}
+    SGSWData(){sp_info = nullptr;memory_p = nullptr;}
     void partition_data(DTSWData &d,int R,int C);
     /*----------------------------------------------------------------*/
     SGSWData(int i, int j){my_row=i;my_col=j;sp_info = nullptr;}
     /*----------------------------------------------------------------*/
     SGHandle&get_sg_handle(){return sg_handle;}
-    /*----------------------------------------------------------------*/
-    int get_rows(){return elem_rows;}
     /*----------------------------------------------------------------*/
     int get_blocks(){return rows;}
     int get_row_blocks(){return rows;}
@@ -63,19 +62,19 @@ namespace dtsw{
     }
     /*----------------------------------------------------------------*/
     double  &x(int i, int j){      
-      return (*pack_data)[i].data[0].v[j];
+      return pack_data[i].data[0].v[j];
     }
     /*----------------------------------------------------------------*/
     double  &y(int i, int j){
-      return (*pack_data)[i].data[1].v[j];
+      return pack_data[i].data[1].v[j];
     }
     /*----------------------------------------------------------------*/
     double  &z(int i, int j){
-      return (*pack_data)[i].data[2].v[j];
+      return pack_data[i].data[2].v[j];
     }
     /*----------------------------------------------------------------*/
     double  &l(int i, int j){
-      return (*pack_data)[i].data[3].v[j];
+      return pack_data[i].data[3].v[j];
     }
     /*----------------------------------------------------------------*/
     quad<double>  &operator[](int i){
@@ -89,7 +88,10 @@ namespace dtsw{
     int     get_row_index(){return my_row;}
     void    report_data();
     string  get_name(){return name;}
-    void    set_rows(int n){elem_rows = n;}
+    void    set_rows_old(int n){}
+    int get_mem_size_in_bytes(){return mem_size_in_bytes;}
+    int get_mem_size_in_elems(){return mem_size_in_elements;}
+    int get_rows(){return get_mem_size_in_elems();}
     /*----------------------------------------------------------------*/
   };
   /*----------------------------------------------------------------*/

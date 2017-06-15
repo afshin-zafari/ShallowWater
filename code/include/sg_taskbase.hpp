@@ -9,6 +9,7 @@ namespace dtsw{
   private:
     SWTask *parent;
   public:
+    SWTask* get_parent(){return parent;}
     virtual void run()=0;
     /*---------------------------------------------------------*/
     void set_parent(SWTask *p){

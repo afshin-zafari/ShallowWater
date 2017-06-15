@@ -45,12 +45,16 @@ namespace dtsw{
     }
     //list<DataAccess*> *getDataAccess(){return data_list;}
     /*------------------------------------------------------------*/
-    SWTask(){ data_list = new list<DataAccess*>; }
+    SWTask(){
+      data_list = new list<DataAccess*>;
+      child_count = 0;
+      parent = nullptr;
+    }
     /*------------------------------------------------------------*/
     virtual void finished(){
       setFinished(true);
       if (parent){
-	cout << "parent child count : " << parent->child_count << endl;
+	LOG_INFO(LOG_DTSW, "parent's task :%s child_count :%d\n " ,parent->getName().c_str(),(int)parent->child_count );
 	if ( --parent->child_count ==0)
 	  parent->finished();
 	
