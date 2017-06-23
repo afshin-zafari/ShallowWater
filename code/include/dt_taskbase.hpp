@@ -5,13 +5,15 @@
 #include <atomic>
 #include "dt_database.hpp"
 #include "ductteip.hpp"
+#include "sg/platform/atomic.hpp"
 
 namespace dtsw{
   class SWTask: public IDuctteipTask {
   private:
   public:
     SWTask *parent;
-    std::atomic<size_t> child_count;
+    //std::atomic<size_t> child_count;
+    int child_count;
     virtual void dump()=0;
     virtual void runKernel()=0;
     /*------------------------------------------------------------*/
@@ -55,7 +57,7 @@ namespace dtsw{
       setFinished(true);
       if (parent){
 	LOG_INFO(LOG_DTSW, "parent's task :%s child_count :%d\n " ,parent->getName().c_str(),(int)parent->child_count );
-	if ( --parent->child_count ==0)
+	if ( Atomic::decrease_nv(&parent->child_count) ==0)
 	  parent->finished();
 	
       }

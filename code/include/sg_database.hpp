@@ -25,18 +25,18 @@ namespace dtsw{
   private:
     typedef SGSWData         SGData;
     typedef vector<SGData *> SGDataList;
-    quad<double>      *data;
     DTSWData         *dt_data;
     int          rows,cols,elem_rows_deprec,elem_cols_dep,my_row,my_col;
     SGDataList   parts;
     SGHandle     sg_handle;
     double       val;
-    DataPack     *pack_data;
     SpInfo       *sp_info;
     byte         *memory_p;
     int           mem_size_in_bytes,mem_size_in_elements;
     string       name;
   public:
+    DataPack     *pack_data;
+    quad<double>      *data;
     /*----------------------------------------------------------------*/
     SGSWData(){sp_info = nullptr;memory_p = nullptr;}
     void partition_data(DTSWData &d,int R,int C);

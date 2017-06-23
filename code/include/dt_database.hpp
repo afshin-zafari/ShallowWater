@@ -8,7 +8,7 @@ namespace dtsw{
   class DTSWData : public IData {
   private:
     std::vector <DTSWData *> Dlist;
-    int rows,cols,row_idx,col_idx,host2;
+    int rows,cols,row_idx,col_idx;
     byte *memory_p;
     int mem_size_in_bytes, mem_size_in_elements,item_size;
   public:

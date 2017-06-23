@@ -24,8 +24,14 @@ namespace dtsw{
       return;
     if ( !C.get_data())
       return;
+    
     for(int i=0;i<A.get_rows(); i++){
-      C[i] += A[i] * dt * B[i];
+      assert(i<A.get_mem_size_in_elems());
+      assert(i<C.get_rows());
+      assert(i<B.get_rows());
+      for(int j=0;j<4;j++){
+	C[i].v[j] += A[i].v[j] * dt * B[i].v[j];
+      }
     }
   }
   /*---------------------------------------------*/
@@ -45,39 +51,82 @@ namespace dtsw{
   /*---------------------------------------------*/
   void SGRHSTask::run(){
 
-    SGData &H(*a);
-    SGData &T(*b);
-    SGData &F(*c);
+    SGData &H(*h);
+    SGData &T(*t);
+    SGData &F(*dh);
     LOG_INFO(LOG_DTSW,"SG RHS Kernel called.\n");
     
     
     double d = H.v(0,0) +  H.x(0,0);
     const double gh0 = Parameters.gh0;
     for (uint32_t i = 0; i < H.get_rows() ; ++i) {
+      if (H.get_row_index()*Parameters.atm_block_size_L2 + atm_offset+ i>=Parameters.atm_length){
+	LOG_INFO(LOG_DTSW,"%d,%d,%d,%d,%d,  len=%ld.\n",H.get_row_index(),Parameters.atm_block_size_L2 , atm_offset, i,
+		 H.get_row_index()*Parameters.atm_block_size_L2 + atm_offset+ i,Parameters.atm_length);
+	continue;
+      }
       const atmdata &a(Atm[H.get_row_index()*Parameters.atm_block_size_L2 + atm_offset+ i]);
-
+      int Tz = T.get_mem_size_in_elems();
+      int Hz = H.get_mem_size_in_elems();
+      int Fz = F.get_mem_size_in_elems();
+      assert(i<Tz);
+      assert(i<Fz);
+      assert(i<Hz);
+      //      LOG_INFO(LOG_DTSW,"index :%d , sizes of %s :%d, %s:%d, %s:%d\n",i,T.get_name().c_str(),Tz,F.get_name().c_str(),Fz,H.get_name().c_str(),Hz);
+      /*
       const double p = -(    H.v(i,0) * T.x(i,0)
 			   + H.v(i,1) * T.y(i,0)
 			   + H.v(i,2) * T.z(i,0)
 			   + a.f * (a.y * H.v(i,2) - a.z * H.v(i,1)) + T.x(i,3));
+      */
+      const double p = -(    H.data[i].v[0] * T.pack_data[i].data[0].v[0]
+			   + H.data[i].v[1] * T.pack_data[i].data[1].v[0]
+			   + H.data[i].v[2] * T.pack_data[i].data[2].v[0]
+			   + a.f * (a.y * H.data[i].v[2] - a.z * H.data[i].v[1]) + T.pack_data[i].data[0].v[3]);
+      continue;
+      /*
       const double q = -(  H.v(i,0) * T.x(i,1)
 			   + H.v(i,1) * T.y(i,1)
 			   + H.v(i,2) * T.z(i,1)
 			   + a.f * (a.z * H.v(i,0) - a.x * H.v(i,2)) + T.y(i,3));
+      */
+      const double q = -(    H.data[i].v[0] * T.pack_data[i].data[0].v[1]			     
+			   + H.data[i].v[1] * T.pack_data[i].data[1].v[1]
+			   + H.data[i].v[2] * T.pack_data[i].data[2].v[1]
+			   + a.f * (a.z * H.data[i].v[0] - a.x * H.data[i].v[2]) + T.pack_data[i].data[1].v[3]);
+      /*
       const double s = -(  H.v(i,0) * T.x(i,2)
 			   + H.v(i,1) * T.y(i,2)
 			   + H.v(i,2) * T.z(i,2)
 			   + a.f * (a.x * H.v(i,1) - a.y * H.v(i,0)) + T.z(i,3));
+      */
+      const double s = -(    H.data[i].v[0] * T.pack_data[i].data[0].v[2]
+			   + H.data[i].v[1] * T.pack_data[i].data[1].v[2]
+			   + H.data[i].v[2] * T.pack_data[i].data[2].v[2]
+			   + a.f * (a.x * H.data[i].v[1] - a.y * H.data[i].v[0]) + T.pack_data[i].data[2].v[3]);
 
+      /*
       F.v(i,0) = a.p_u[0]*p + a.p_u[1]*q + a.p_u[2]*s + T.l(i,0);
       F.v(i,1) = a.p_v[0]*p + a.p_v[1]*q + a.p_v[2]*s + T.l(i,1);
       F.v(i,2) = a.p_w[0]*p + a.p_w[1]*q + a.p_w[2]*s + T.l(i,2);
+      */
 
+      F.data[i].v[0] = a.p_u[0]*p + a.p_u[1]*q + a.p_u[2]*s + T.pack_data[i].data[3].v[0];
+      F.data[i].v[1] = a.p_v[0]*p + a.p_v[1]*q + a.p_v[2]*s + T.pack_data[i].data[3].v[1];
+      F.data[i].v[2] = a.p_w[0]*p + a.p_w[1]*q + a.p_w[2]*s + T.pack_data[i].data[3].v[2];
+      /*
       F.v(i,3) = -(  H.v(i,0) * (T.x(i,3) - a.gradghm[0])
 		   + H.v(i,1) * (T.y(i,3) - a.gradghm[1])
 		   + H.v(i,2) * (T.z(i,3) - a.gradghm[2])
 		   + (H.v(i,3)+gh0-a.ghm) * (T.x(i,0) + T.y(i,1) + T.z(i,2)))
 	+ T.l(i,3);
+      */
+      F.data[i].v[3] = -(    H.data[i].v[0]  * (T.pack_data[i].data[0].v[3] - a.gradghm[0])
+			  +  H.data[i].v[1]  * (T.pack_data[i].data[1].v[3] - a.gradghm[1])
+			  +  H.data[i].v[2]  * (T.pack_data[i].data[2].v[3] - a.gradghm[2])
+			  + (H.data[i].v[3]+gh0-a.ghm) * (T.pack_data[i].data[0].v[0] + T.pack_data[i].data[1].v[1] + T.pack_data[i].data[2].v[2]) )
+	+ T.pack_data[i].data[3].v[3];
+
     }
   }
   /*---------------------------------------------*/
@@ -99,13 +148,13 @@ namespace dtsw{
   void SGDiffTask::run(){
     SGData &A(*a),&B(*b),&C(*c);
     LOG_INFO(LOG_DTSW,"SG Diff for %s task Kernel called.\n",A.get_name().c_str());
-
+    
     for ( uint32_t i=0;i<A.get_sp_info().data.size(); i++){
       int r =  A.get_sp_info().index[i].first ;
       int col =  A.get_sp_info().index[i].second ;
-      //      if(1)
+      if(1)
       {
-	/*
+	/* 
 	LOG_INFO(LOG_DTSW,"C size :%d B. size : %d. \n",C.get_mem_size_in_elems(),B.get_mem_size_in_elems());
 	LOG_INFO(LOG_DTSW,"C:%p (%d) = D(%d) * B:%p (%d)\n",C.get_data(),r,i,B.get_data(), col);
 	double temp = B[col].v[0];
@@ -115,11 +164,22 @@ namespace dtsw{
 	temp = C.x(r,0);
 	LOG_INFO(LOG_DTSW,"%lf\n",temp);
 	*/
+	assert(r<C.get_mem_size_in_elems());
+	assert(col<B.get_mem_size_in_elems());
 	for(int j=0;j<4;j++){
-	  C.x(r,j) +=  A.get_sp_info().data[i].v[j] * B[col].v[j];
-	  C.y(r,j) +=  A.get_sp_info().data[i].v[j] * B[col].v[j];
-	  C.z(r,j) +=  A.get_sp_info().data[i].v[j] * B[col].v[j];
-	  C.l(r,j) +=  A.get_sp_info().data[i].v[j] * B[col].v[j];
+	  double d =  A.get_sp_info().data[i].v[j] ;
+	  d *=   B.data[col].v[j];
+	  C.pack_data[r].data[0].v[j] += d;
+	  C.pack_data[r].data[1].v[j] += d;
+	  C.pack_data[r].data[2].v[j] += d;
+	  C.pack_data[r].data[3].v[j] += d;
+		  
+	  /*
+	  C.x(r,j) += d;
+	  C.y(r,j) += d;
+	  C.z(r,j) += d;
+	  C.l(r,j) += d;
+	  */
 	}
       }
     }    
@@ -142,9 +202,16 @@ namespace dtsw{
   void SGStepTask::run(){
     SGData &H(*e),&F1(*a),&F2(*b),&F3(*c),&F4(*d);
     double s = 1.0* (TimeStepsTask::last_step-1) * Parameters.dt /6.0;
+    
     if (!H.get_data() ) return;
     for(int i=0;i<H.get_rows();i++){
-      H[i] += s *( F1[i] + 2.0*(F2[i]+F3[i])+F4[i]); 
+      assert(i < F1.get_mem_size_in_elems() );
+      assert(i < F2.get_mem_size_in_elems() );
+      assert(i < F3.get_mem_size_in_elems() );
+      assert(i < F4.get_mem_size_in_elems() );
+      for(int j=0;j<4;j++){
+	H[i].v[j] += s *( F1[i].v[j] + 2.0*(F2[i].v[j]+F3[i].v[j])+F4[i].v[j]);
+      }
     }
   }
   /*---------------------------------------------*/

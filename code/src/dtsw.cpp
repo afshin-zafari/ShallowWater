@@ -10,6 +10,23 @@ namespace dtsw{
   AtmArray Atm;
   SWAlgorithm *sw_engine;
   SpInfo *spD;
+  double ProfileTime;
+  /*----------------------------------------*/
+  char * get_path_from_args(int argc, char *argv[]){
+    Parameters.IterNo = 2;
+    for ( int i=0;i<argc;i++){
+      LOG_INFO(LOG_DTSW,"argv[%d]=%s.\n",i,argv[i]);
+      if (strcmp(argv[i],"--data-path")==0){
+	LOG_INFO(LOG_DTSW,"Found argv[%d]=%s.\n",i+1,argv[i+1]);
+	return (argv[i+1]);
+      }
+      if (strcmp(argv[i],"--iter-no")==0){
+	Parameters.IterNo = atoi(argv[i+1]);
+      }
+    }
+    LOG_INFO(LOG_DTSW,"Returned null ptr.\n");
+    return nullptr;
+  }
   /*----------------------------------------*/
   void parse_args(int argc,char *argv[]){
     Parameters.partition_level[0].M              = config.M;
@@ -31,11 +48,8 @@ namespace dtsw{
     Parameters.p = config.p;
     Parameters.q = config.q;
     
-    Parameters.dt  = 0.5;
-    Parameters.gh0 = 0.1;//todo values of dt and gh0
-
-    Parameters.data_path = new char[200];
-    strcpy(Parameters.data_path,"./data/galew-6400-31-ep2.7-o4-gc-0.05/");
+    Parameters.dt  = 600.0;
+    Parameters.gh0 = 0.1;
     
   }
   /*----------------------------------------*/
@@ -50,12 +64,13 @@ namespace dtsw{
     LOG_INFO(LOG_DTSW,"Reading sparse D operator.\n");
 
     uint64_t  d_n = read_var_D(fn.c_str(),sp_info.index,sp_info.data);
-    int chunk_size_L1 = d_n / Parameters.partition_level[1].blocks_per_row;
+    Parameters.N = d_n;
+    int chunk_size_L1 = (d_n / Parameters.partition_level[1].blocks_per_row)+1;
 
     LOG_INFO(LOG_DTSW,"Split sp by: %dx%d of %d size each.\n",Parameters.partition_level[1].blocks_per_row,Parameters.partition_level[1].blocks_per_col,chunk_size_L1);
 
     split(sp_info,Parameters.partition_level[1].blocks_per_row,Parameters.partition_level[1].blocks_per_col,chunk_size_L1);
-    int chunk_size_L2 = chunk_size_L1/Parameters.partition_level[2].blocks_per_row;
+    int chunk_size_L2 = (chunk_size_L1/Parameters.partition_level[2].blocks_per_row)+1;
     for(uint32_t i=0;i<sp_info.sp_blocks.size();i++){
 
       LOG_INFO(LOG_DTSW,"Second Level Split sp by: %dx%d of %d size each.\n",
@@ -79,9 +94,13 @@ namespace dtsw{
 	LOG_INFO(LOG_DTSW,"Assign D(%d,%d).SG(%d,%d).\n",i%nby,i/nby,k,l);
 	
 	SGData &a = (*A.sg_data)(k,l);
+	assert(sp_info.sp_blocks[i]);
+	assert(sp_info.sp_blocks[i]->sp_blocks[j]);
 	a.set_sp_info(sp_info.sp_blocks[i]->sp_blocks[j]);
       }
     }
+    sp_info.index.clear();
+    sp_info.data.clear();
   }
   /*----------------------------------------*/
   void prepare_H(){
@@ -110,8 +129,8 @@ namespace dtsw{
     int nby  = Parameters.partition_level[1].Mb;
     int nbx  = Parameters.partition_level[1].Nb;
     int nby2 = Parameters.partition_level[2].blocks_per_row;
-    int nbx2 = 1;
     for(uint32_t i=0;i<nby ;i++){
+      int nbx2 = 1;
 
       (new SGData )->partition_data(  (*H)(i), nby2,nbx2);
       (new SGData )->partition_data(  (*T)(i), nby2,nbx2);
@@ -142,8 +161,9 @@ namespace dtsw{
     int nby  = Parameters.partition_level[1].Mb;
     int nby2 = Parameters.partition_level[2].blocks_per_row;
     string fn = Parameters.data_path+string("atm");    
-    LOG_INFO(LOG_DTSW,"Reading Atm from file %s.\n",fn.c_str());    
     uint64_t size=read_var_Atm(fn.c_str(),Atm);
+    LOG_INFO(LOG_DTSW,"Reading Atm from file %s, atm length=%ld.\n",fn.c_str(),size);
+    Parameters.atm_length = size;
     Parameters.atm_block_size_L1 = size/nby;
     Parameters.atm_block_size_L2 = size/nby/nby2;
   }
@@ -152,12 +172,24 @@ namespace dtsw{
     const bool isSparse = true;
     const bool notAllocate = true;
     sw_engine = new SWAlgorithm;   
+
+    Parameters.data_path = new char[200];
+    //strcpy(Parameters.data_path,"./data/galew-6400-31-ep2.7-o4-gc-0.05/");
+    strcpy(Parameters.data_path,get_path_from_args(argc,argv));
+    string fn = Parameters.data_path + string("params");
+    FILE *f = fopen(fn.c_str(),"rb");
+    uint64_t dummy;
+    fread(&dummy,sizeof(uint64_t),1,f);
+    fread(&Parameters.gh0,sizeof(double),1,f);
+    fclose(f);
+    LOG_INFO(LOG_DTSW,"Paraeter gh0 is read as:%lf.\n",Parameters.gh0);
+
     
     dtEngine.start(argc,argv);
     LOG_INFO(LOG_DTSW,"After DuctTeip Init.\n");
     parse_args(argc,argv);
 
-    int nby  = Parameters.partition_level[1].Mb;
+    int nby  = Parameters.partition_level[1].blocks_per_row;
     int nby2 = Parameters.partition_level[2].blocks_per_row;
     int nbx = Parameters.partition_level[1].Nb;
     int M = Parameters.partition_level[0].M;
@@ -166,19 +198,21 @@ namespace dtsw{
     LOG_INFO(LOG_DTSW,"Defining DT Data .\n");
     int quad_double_size = sizeof(quad<double>) ,
       quad_vec4_size = sizeof(quad<quad<double>>);
+    M = ( (M/nby+1)/nby2+1)*nby*nby2;
+    Parameters.partition_level[0].M=M;
 
-    H  = new Data(M,1,nby, 1  ,"H" , quad_double_size * M / nby , quad_double_size );
-    D  = new Data(M,1,nby, nbx,"D" , quad_double_size * M / nby , quad_double_size ,isSparse   );
-    T  = new Data(M,1,nby, 1  ,"T" , quad_vec4_size   * M / nby , quad_vec4_size   );
-    F1 = new Data(M,1,nby, 1  ,"F1", quad_double_size * M / nby , quad_double_size );
-    F2 = new Data(M,1,nby, 1  ,"F2", quad_double_size * M / nby , quad_double_size );
-    F3 = new Data(M,1,nby, 1  ,"F3", quad_double_size * M / nby , quad_double_size );
-    F4 = new Data(M,1,nby, 1  ,"F4", quad_double_size * M / nby , quad_double_size );
+    H  = new Data(M,1,nbx, 1  ,"H" , quad_double_size * M  , quad_double_size );
+    D  = new Data(M,1,nby, nbx,"D" , quad_double_size * M  , quad_double_size ,isSparse   );
+    T  = new Data(M,1,nbx, 1  ,"T" , quad_vec4_size   * M  , quad_vec4_size   );
+    F1 = new Data(M,1,nbx, 1  ,"F1", quad_double_size * M  , quad_double_size );
+    F2 = new Data(M,1,nbx, 1  ,"F2", quad_double_size * M  , quad_double_size );
+    F3 = new Data(M,1,nbx, 1  ,"F3", quad_double_size * M  , quad_double_size );
+    F4 = new Data(M,1,nbx, 1  ,"F4", quad_double_size * M  , quad_double_size );
 
-    H1 = new Data(M,1,nby, 1  ,"H1", quad_double_size * M / nby , quad_double_size );
-    H2 = new Data(M,1,nby, 1  ,"H2", quad_double_size * M / nby , quad_double_size );
-    H3 = new Data(M,1,nby, 1  ,"H3", quad_double_size * M / nby , quad_double_size );
-    H4 = new Data(M,1,nby, 1  ,"H4", quad_double_size * M / nby , quad_double_size );
+    H1 = new Data(M,1,nbx, 1  ,"H1", quad_double_size * M  , quad_double_size );
+    H2 = new Data(M,1,nbx, 1  ,"H2", quad_double_size * M  , quad_double_size );
+    H3 = new Data(M,1,nbx, 1  ,"H3", quad_double_size * M  , quad_double_size );
+    H4 = new Data(M,1,nbx, 1  ,"H4", quad_double_size * M  , quad_double_size );
 
     LOG_INFO(LOG_DTSW,"Partitioning variables for 2nd level.\n");
     partition_all();
@@ -204,6 +238,10 @@ namespace dtsw{
   /*----------------------------------------*/
   void finalize(){
     sw_engine->finalize();
+    ProfileTime = UserTime() - ProfileTime ;
+    printf("P:%d, p:%d, q:%d, N:%d, B:%d, b:%d, T:",
+	   Parameters.P,Parameters.p,Parameters.q,
+	   Parameters.N,Parameters.partition_level[1].blocks_per_row,Parameters.partition_level[2].blocks_per_row);
     delete D;
     delete T;
     delete H;
@@ -270,23 +308,27 @@ namespace dtsw{
   void run(int argc, char *argv[]){
     TimeStepsTask::D = new IterationData();    
     sw_engine->submit(new TimeStepsTask);    
-    sw_engine->submit(new TimeStepsTask);        
+    sw_engine->submit(new TimeStepsTask);
+    ProfileTime = UserTime();
   }
   /*----------------------------------------------------*/
   void runStep(SWTask*);
   void TimeStepsTask::finished(){
     SWTask::finished();
-    if ( last_step  < 1 )         
+    if ( last_step  < Parameters.IterNo )         
       sw_engine->submit(new TimeStepsTask );
   }
   void TimeStepsTask::runKernel(){
     runStep(this);
+    LOG_INFO(LOG_DTSW,"DT Tasks count:%d.\n",sw_engine->get_tasks_count());
+    if (sw_engine->get_tasks_count()<=2)// Only time step tasks are added.
+      finished();
   }
   /*----------------------------------------------------*/
   void runStep(SWTask *p){
     double dt = Parameters.dt;
     LOG_INFO(LOG_DTSW,"f(F1,H) is called.\n");
-    f(F1,H, p);                      // F1 = f(H)    
+    f(F1,H, p);                      // F1 = f(H)
     add(H1, H , 0.5*dt, F1 , p);     // H1 = H + 0.5*dt*F1
     f(F2,H1,p);
     add(H2, H , 0.5*dt, F2 , p);     // H2 = H + 0.5*dt*F2
@@ -306,7 +348,6 @@ namespace dtsw{
     IDuctteipTask::key = key;
     DataAccessList *dlist = new DataAccessList;    
     data_access(dlist,D,(last_step %2)?IData::READ:IData::WRITE);
-    cout << "TS arg count: " << dlist->size() << endl;
     setDataAccessList(dlist);      
     host = me;
   }
@@ -344,7 +385,8 @@ namespace dtsw{
   /*----------------------------------------------------------------*/
   void SGSWData::partition_data(DTSWData &d,int R,int C){
     rows = R; cols = C;
-    int block_size_in_bytes = d.get_mem_size_in_bytes() / R / C;
+    int bz = d.get_mem_size_in_bytes();
+    int block_size_in_bytes = (bz / R / C );
     dt_data = static_cast<Data *>(&d);
     d.sg_data = this;
     my_row=my_col=-1;
@@ -389,9 +431,10 @@ namespace dtsw{
 	t->item_size = item_size_;
 	t->memory_p = nullptr;
 	if(!isSparse){
-	  t->mem_size_in_bytes = total_size_in_bytes;
-	  t->memory_p = new byte[total_size_in_bytes];
-	  t->mem_size_in_elements = total_size_in_bytes / item_size_;
+	  int partition_size = total_size_in_bytes / r/ c ;
+	  t->mem_size_in_bytes = partition_size;
+	  t->memory_p = new byte[partition_size];
+	  t->mem_size_in_elements = partition_size / item_size_;
 	  LOG_INFO(LOG_DTSW,"Host for %s is set to %d modu %d   = %d .\n",ss.str().c_str(),i,Parameters.P,i%Parameters.P);
 	  LOG_INFO(LOG_DTSW,"Memory :%p L2 mem  size(in bytes):%d (in items count):%d.\n",t->memory_p,t->mem_size_in_bytes, t->mem_size_in_elements);
 	  t->setHost(i%Parameters.P);	    

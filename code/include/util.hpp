@@ -7,13 +7,16 @@
 #include <iomanip>
 #include <cmath>
 
-#define LOG_DTSW 0xFFFFFFFF
+//#define LOG_DTSW 0
+#ifndef LOG_DTSW
+#define LOG_DTSW 0x0FFFFFFFF
+#endif
 
 namespace dtsw{
   template<typename T>
   struct quad{
     T v[4];
-    quad<T> operator *(quad<T> &rhs){
+    quad<T> operator *(quad<T> rhs){
       quad<T> t;
       t.v[0] = v[0] * rhs.v[0];
       t.v[1] = v[1] * rhs.v[1];
@@ -21,7 +24,7 @@ namespace dtsw{
       t.v[3] = v[3] * rhs.v[3];
       return t;
     }
-    quad<T> operator=(quad<T> &rhs){
+    quad<T> operator=(quad<T> rhs){
       v[0] = rhs.v[0];
       v[1] = rhs.v[1];
       v[2] = rhs.v[2];
@@ -35,7 +38,7 @@ namespace dtsw{
       t.v[3] = v[3] + rhs.v[3];
       return t;
     }
-    template <typename T > friend  quad<T> operator *(T  lhs, quad<T> rhs);
+    template <typename R > friend  quad<R> operator *(R  lhs, quad<R> rhs);
     quad<T> operator *( double rhs){
       return rhs  * (*this);
     }

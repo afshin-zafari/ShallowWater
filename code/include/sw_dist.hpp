@@ -55,6 +55,7 @@ namespace dtsw{
   /*---------------------------------------------------------*/
     void  taskFinished(DuctTeip_Task *task, TimeUnit dur){}
   /*---------------------------------------------------------*/
+    int get_tasks_count(){return dtEngine.getTaskCount();}
   };
   extern SWAlgorithm *sw_engine;
   /*----------------------------------------------*/

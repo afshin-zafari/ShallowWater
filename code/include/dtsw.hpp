@@ -43,7 +43,8 @@ namespace dtsw{
     Partition_t partition_level[3];
     char       *data_path;
     double      gh0;
-    int         atm_block_size_L1,atm_block_size_L2;
+    int         atm_block_size_L1,atm_block_size_L2,
+      N,IterNo,atm_length;    
   }Parameters_t;
   /*----------------------------------------*/
   typedef struct atmdata {

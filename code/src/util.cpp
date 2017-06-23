@@ -26,11 +26,11 @@ namespace dtsw{
   }
   /*------------------------------------------*/
   void split(SpInfo  &M, int ny, int nx,int chunk_size){
-    M.num_blocks_x = nx;
-    M.num_blocks_y = ny;
+    M.num_blocks_x = nx ;
+    M.num_blocks_y = ny ;
     assert(chunk_size);
-    for (int i=0;i<ny;i++){
-      for(int j=0;j<nx;j++){
+    for (int i=0;i<M.num_blocks_y;i++){
+      for(int j=0;j<M.num_blocks_x;j++){
 	SpInfo  *spm = new SpInfo(i,j,true);
 	M.sp_blocks.push_back(spm);
       }
@@ -39,11 +39,11 @@ namespace dtsw{
     for(uint32_t i=0; i < M.data.size(); i++){
       int R = M.index[i].first;
       int C = M.index[i].second;
-      int blk_r = R / chunk_size;
-      int blk_c = C / chunk_size;
+      int blk_r = std::min(R / chunk_size, ny-1);
+      int blk_c = std::min(C / chunk_size, nx-1);
       int rbegin = chunk_size * blk_r;
       int cbegin = chunk_size * blk_c;
-      //printf("R=%d,C=%d,rbegin=%d,cbegin=%d,blk_c=%d,ny=%d,blk_r=%d,M.sp_blocks.size()=%d\n",R,C,rbegin,cbegin,blk_c,ny,blk_r,M.sp_blocks.size());
+      //      LOG_INFO(LOG_DTSW,"R=%d,C=%d,rbegin=%d,cbegin=%d,blk_c=%d,ny=%d,blk_r=%d,M.sp_blocks.size()=%d\n",R,C,rbegin,cbegin,blk_c,ny,blk_r,M.sp_blocks.size());
       assert(blk_c*ny + blk_r <M.sp_blocks.size());
       SpInfo &block = *M.sp_blocks[blk_c * ny + blk_r];
       block.data.push_back(M.data[i]);
