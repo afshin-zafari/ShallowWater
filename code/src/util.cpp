@@ -52,6 +52,8 @@ namespace dtsw{
       block.cb = cbegin;
       block.empty = false;
     }
+    M.data.clear();
+    M.index.clear(); 
     LOG_INFO(LOG_DTSW,"Data split finished.\n");
   }
   /*------------------------------------------*/

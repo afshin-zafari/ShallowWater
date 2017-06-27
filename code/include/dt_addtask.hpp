@@ -18,10 +18,11 @@ namespace dtsw{
       child_count = 0 ;
       if ( host == me )
 	if ( parent )
-	  parent->child_count ++;
+	  Atomic::increase(&parent->child_count);
       *this << *A << *B	>> *C;
       key = ADD;
-      setName("AddTask");      
+      setNameWithParent("_Add");
+      
     }
     /*----------------------------------------------*/
     void dump(){

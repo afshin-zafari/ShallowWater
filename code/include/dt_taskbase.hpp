@@ -14,6 +14,7 @@ namespace dtsw{
     SWTask *parent;
     //std::atomic<size_t> child_count;
     int child_count;
+    bool is_submitting;
     virtual void dump()=0;
     virtual void runKernel()=0;
     /*------------------------------------------------------------*/
@@ -51,18 +52,32 @@ namespace dtsw{
       data_list = new list<DataAccess*>;
       child_count = 0;
       parent = nullptr;
+      is_submitting = false;
     }
     /*------------------------------------------------------------*/
     virtual void finished(){
+      if ( state >= Finished  ) return;
       setFinished(true);
       if (parent){
-	LOG_INFO(LOG_DTSW, "parent's task :%s child_count :%d\n " ,parent->getName().c_str(),(int)parent->child_count );
+	while ( parent->is_still_submitting() ){};
+	LOG_INFO(LOG_DTSW, "%s finished from parent's task :%s child_count :%d\n " ,getName().c_str(),parent->getName().c_str(),(int)parent->child_count );
 	if ( Atomic::decrease_nv(&parent->child_count) ==0)
-	  parent->finished();
-	
-      }
-	
+	  parent->finished();	
+      }	
     }
+    /*------------------------------------------------------------*/
+    bool is_still_submitting(){return is_submitting;}
+    /*------------------------------------------------------------*/
+    void setNameWithParent(const char*n){
+      if ( !parent ){
+	setName(n);
+	return;
+      }
+      std::stringstream ss;
+      ss << parent->getName() << "_" << parent->child_count << n ;
+      setName(ss.str());
+    }
+
   };
 }
 #endif //DT_TASKBASE_HPP

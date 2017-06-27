@@ -27,10 +27,10 @@ namespace dtsw{
       host = E->getHost();
       if ( host == me ) 
 	if (parent)
-	  parent->child_count ++;
+	  Atomic::increase(&parent->child_count);
       key = STEP;
       *this <<*A <<*B << *C <<*D >> *E;
-      setName("StepTask");
+      setNameWithParent("_Step");
     }
     /*------------------------------------------------------------*/
     virtual void runKernel();

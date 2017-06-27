@@ -6,11 +6,12 @@ namespace dtsw{
     SGData &b = *B->sg_data;
     SGData &c = *C->sg_data;
     LOG_INFO(LOG_DTSW,"Add task :%s kernel called\n",getName().c_str());
-    
+    is_submitting = true;
     for(int i=0;i<a.get_blocks(); i++){
       SGAddTask *t = new SGAddTask(a(i),b(i),dt,c(i));
       sw_engine->subtask(this,t);
     }
+    is_submitting = false;
   }
   /*---------------------------------------------*/
   void SGAddTask::run(){
@@ -41,12 +42,14 @@ namespace dtsw{
     SGData &c = *C->sg_data;
     LOG_INFO(LOG_DTSW,"RHS kernel called.\n");
     
+    is_submitting = true;
     
     for(int i=0;i<a.get_blocks(); i++){
       SGRHSTask *t = new SGRHSTask(atm_offset,a(i),b(i),c(i));
       LOG_INFO(LOG_DTSW,"SG RHS(%d) submitted.\n",i);
       sw_engine->subtask(this,t);
     }
+    is_submitting = false;
   }
   /*---------------------------------------------*/
   void SGRHSTask::run(){
@@ -136,6 +139,7 @@ namespace dtsw{
     SGData &b = *B->sg_data;
     SGData &c = *C->sg_data;
     LOG_INFO(LOG_DTSW,"Diff task Kernel called.\n");
+    is_submitting = true;
 
     
     for(int i=0;i<a.get_blocks(); i++){
@@ -143,6 +147,8 @@ namespace dtsw{
       sw_engine->subtask(this,t);
       LOG_INFO(LOG_DTSW,"SG Diff task(%d) is submitted, parent's children#:%d.\n",i,(int)t->get_parent()->child_count);
     }
+    is_submitting = false;
+
   }
   /*---------------------------------------------*/
   void SGDiffTask::run(){
@@ -192,17 +198,18 @@ namespace dtsw{
     SGData &c = *C->sg_data;
     SGData &d = *D->sg_data;
     SGData &e = *E->sg_data;
+    is_submitting = true;
     
     for(int i=0;i<a.get_blocks(); i++){
       SGStepTask *t = new SGStepTask(a(i),b(i),c(i),d(i),e(i));
       sw_engine->subtask(this,t);
     }
+    is_submitting = false;
   }
   /*---------------------------------------------*/
   void SGStepTask::run(){
     SGData &H(*e),&F1(*a),&F2(*b),&F3(*c),&F4(*d);
     double s = 1.0* (TimeStepsTask::last_step-1) * Parameters.dt /6.0;
-    
     if (!H.get_data() ) return;
     for(int i=0;i<H.get_rows();i++){
       assert(i < F1.get_mem_size_in_elems() );

@@ -20,9 +20,12 @@ namespace dtsw{
     }
     /*---------------------------------------------------------*/
     ~SGTask(){
-      if (parent)
+      if (parent){
+	while ( parent->is_still_submitting() ) {};
+	
 	if ( sg::Atomic::decrease_nv(&parent->child_count) ==0 )
 	  parent->finished();
+      }	
     }
 
   };

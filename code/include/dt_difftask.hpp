@@ -17,10 +17,10 @@ namespace dtsw{
       LOG_INFO(LOG_DTSW,"host of Diff task %d\n",getHost());
       if ( getHost() == me ) 
 	if (p)
-	  p->child_count ++;
+	  Atomic::increase(&parent->child_count);
       *this << *B >> *C;
       key = DIFF;
-      setName("DiffTask");
+      setNameWithParent("_Diff");
     }
     /*------------------------------------------------------------*/
     void runKernel();
