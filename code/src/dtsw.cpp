@@ -5,9 +5,9 @@
 namespace dtsw{
   /*----------------------------------------*/
   Parameters_t Parameters;
-  Data *H,*T,*D;
   Data *F1,*F2,*F3,*F4;
   Data *H1,*H2,*H3,*H4;
+  Data *H,*T,*D;
   AtmArray Atm;
   SWAlgorithm *sw_engine;
   SpInfo *spD;
@@ -243,9 +243,9 @@ namespace dtsw{
   void finalize(){
     sw_engine->finalize();
     ProfileTime = UserTime() - ProfileTime ;
-    printf("P:%d, p:%d, q:%d, N:%d, B:%d, b:%d, T:",
+    printf("P:%d, p:%d, q:%d, N:%d, B:%d, b:%d, S:%d, T:",
 	   Parameters.P,Parameters.p,Parameters.q,
-	   Parameters.N,Parameters.partition_level[1].blocks_per_row,Parameters.partition_level[2].blocks_per_row);
+	   Parameters.N,Parameters.partition_level[1].blocks_per_row,Parameters.partition_level[2].blocks_per_row,Parameters.IterNo);
     delete D;
     delete T;
     delete H;
@@ -269,7 +269,7 @@ namespace dtsw{
 	sw_engine->submit(Diff);
 	LOG_INFO(LOG_DTSW,"Diff task (%d,%d) for host:%d submitted. Children#:%d, Parent: %s children#:%d\n",
 		 i,j,Diff->getHost(),(int)Diff->child_count,Diff->parent->getName().c_str(),(int)Diff->parent->child_count);
-	LOG_INFO(LOG_DTSW,"%s uses  %s its req version is write:%s read:%s .\n",Diff->getName().c_str(),_H(j).getName().c_str(),
+	LOG_INFO(LOG_DTSW,"(****)%s uses  %s its req version is write:%s read:%s .\n",Diff->getName().c_str(),_H(j).getName().c_str(),
 		 _H(j).getWriteVersion().dumpString().c_str(),
 		 _H(j).getReadVersion().dumpString().c_str() );
       }
@@ -283,7 +283,7 @@ namespace dtsw{
       RHSTask *RHS= new RHSTask(_T(i),_H(i),DH(i),p);
       sw_engine->submit(RHS);
       LOG_INFO(LOG_DTSW,"RHS task (%d) submitted, children#:%d.\n",i,(int)RHS->child_count);
-      LOG_INFO(LOG_DTSW,"%s uses %s its req version is write:%s read:%s .\n",RHS->getName().c_str(),_H(i).getName().c_str(),
+      LOG_INFO(LOG_DTSW,"(****)%s uses %s its req version is write:%s read:%s .\n",RHS->getName().c_str(),_H(i).getName().c_str(),
 	       _H(i).getWriteVersion().dumpString().c_str(),
 	       _H(i).getReadVersion().dumpString().c_str() );
 
@@ -291,19 +291,19 @@ namespace dtsw{
   }
   /*----------------------------------------*/
   void f(Data *dH,Data *h, SWTask * p){
-    mult( T, D, H, p);
+    mult( T, D, h, p);
     rhs (dH, T, h , p);
   }
   /*----------------------------------------*/
   void add (Data *a1,Data *a2, double dt, Data *a4, SWTask *p){
-    Data &Y(*a1),&H(*a2),&X(*a4);
+    Data &Y(*a1),&_H(*a2),&X(*a4);
     int nb = Parameters.partition_level[1].blocks_per_row;
     for(int i=0; i< nb; i++){
-      AddTask *Add = new AddTask(H(i),X(i),dt,Y(i),p);
+      AddTask *Add = new AddTask(_H(i),X(i),dt,Y(i),p);
       sw_engine->submit(Add);
-      LOG_INFO(LOG_DTSW,"%s uses %s its req version is write:%s read:%s .\n",Add->getName().c_str(),H(i).getName().c_str(),
-	       H(i).getWriteVersion().dumpString().c_str(),
-	       H(i).getReadVersion().dumpString().c_str() );
+      LOG_INFO(LOG_DTSW,"(****)%s uses %s its req version is write:%s read:%s .\n",Add->getName().c_str(),_H(i).getName().c_str(),
+	       _H(i).getWriteVersion().dumpString().c_str(),
+	       _H(i).getReadVersion().dumpString().c_str() );
     }
   }
   /*----------------------------------------------------*/
@@ -313,32 +313,54 @@ namespace dtsw{
     for(int i=0; i< nb; i++){
       StepTask * Step=new StepTask(_F1(i),_F2(i),_F3(i),_F4(i),_H(i),p);
       sw_engine->submit(Step);
-      LOG_INFO(LOG_DTSW,"%s uses  %s its req version is write:%s read:%s .\n",Step->getName().c_str(),_H(i).getName().c_str(),
+      LOG_INFO(LOG_DTSW,"(****)%s uses  %s its req version is write:%s read:%s .\n",Step->getName().c_str(),_H(i).getName().c_str(),
 	       _H(i).getWriteVersion().dumpString().c_str(),
 	       _H(i).getReadVersion().dumpString().c_str() );
     }
   }
   /*----------------------------------------------------*/
+  void runStep(SWTask*);
   IterationData *TimeStepsTask::D = nullptr;
   int TimeStepsTask::last_step=0;
   void run(int argc, char *argv[]){
-    TimeStepsTask::D = new IterationData();    
-    sw_engine->submit(new TimeStepsTask);    
-    if ( Parameters.IterNo > 1)         
-      sw_engine->submit(new TimeStepsTask);
+    TimeStepsTask::D = new IterationData();
+    int n = 2;// Parameters.IterNo;
+    for(int i=0; i < n; i++){
+      TimeStepsTask *step = new TimeStepsTask;
+      sw_engine->submit(step);
+      //runStep(step);
+    }
   }
   /*----------------------------------------------------*/
-  void runStep(SWTask*);
   void TimeStepsTask::finished(){
     SWTask::finished();
+    
+    LOG_INFO(LOG_DTSW,"step :%d, Par.StepNo :%d\n",last_step, Parameters.IterNo);
     if ( last_step  < Parameters.IterNo )         
       sw_engine->submit(new TimeStepsTask );
+    LOG_INFO(LOG_DTSW,"(****)TimeStepTask::fin H(0) version is  write:%s read:%s .\n",
+	     (*H)(0).getWriteVersion().dumpString().c_str(),
+	     (*H)(0).getReadVersion().dumpString().c_str() );
+    LOG_INFO(LOG_DTSW,"(****)TimeStePDATA gt-ver: rd %s, wr %s --- rt-ver: rd %s wr %s\n",
+	     TimeStepsTask::D->getReadVersion().dumpString().c_str(),
+	     TimeStepsTask::D->getWriteVersion().dumpString().c_str() ,
+	     TimeStepsTask::D->getRunTimeVersion(IData::READ).dumpString().c_str(),
+	     TimeStepsTask::D->getRunTimeVersion(IData::WRITE).dumpString().c_str());
   }
+  /*----------------------------------------------------*/
   void TimeStepsTask::runKernel(){
     is_submitting = true;
     runStep(this);
     is_submitting = false;
     LOG_INFO(LOG_DTSW,"DT Tasks count:%d.\n",sw_engine->get_tasks_count());
+    LOG_INFO(LOG_DTSW,"(****)TimeStepTask::fin H(0) version is  write:%s read:%s .\n",
+	     (*H)(0).getWriteVersion().dumpString().c_str(),
+	     (*H)(0).getReadVersion().dumpString().c_str() );
+    LOG_INFO(LOG_DTSW,"(****)TimeStePDATA gt-ver: rd %s, wr %s --- rt-ver: rd %s wr %s\n",
+	     TimeStepsTask::D->getReadVersion().dumpString().c_str(),
+	     TimeStepsTask::D->getWriteVersion().dumpString().c_str() ,
+	     TimeStepsTask::D->getRunTimeVersion(IData::READ).dumpString().c_str(),
+	     TimeStepsTask::D->getRunTimeVersion(IData::WRITE).dumpString().c_str());
     
     if (sw_engine->get_tasks_count()<=2)// Only time step tasks are added.
       finished();
@@ -359,16 +381,30 @@ namespace dtsw{
     return;
   }
   /*----------------------------------------------------------------*/
+  TimeStepsTask::~TimeStepsTask(){
+    LOG_INFO(LOG_DTSW,"step :%d, Par.StepNo :%d\n",last_step, Parameters.IterNo);
+    if ( last_step  < Parameters.IterNo )         
+      sw_engine->submit(new TimeStepsTask );
+  }
+  /*----------------------------------------------------------------*/
   void TimeStepsTask::register_data(){
     parent_context = sw_engine;
     setName("TStep");
-    D->setName("TimeStepsData");
+    TimeStepsTask::D->setName("TimeStepsData");
     if ( last_step ==1)
-      D->setRunTimeVersion("0.0",0);      
+      TimeStepsTask::D->setRunTimeVersion("0.0",0);      
     IDuctteipTask::key = key;
     DataAccessList *dlist = new DataAccessList;    
-    data_access(dlist,D,(last_step %2)?IData::READ:IData::WRITE);
-    setDataAccessList(dlist);      
+    data_access(dlist,TimeStepsTask::D,(last_step==1)?IData::READ:IData::WRITE);
+    setDataAccessList(dlist);
+    LOG_INFO(LOG_DTSW,"(****)TimeStePDATA gt-ver: rd %s, wr %s --- rt-ver: rd %s wr %s\n",
+	     TimeStepsTask::D->getReadVersion().dumpString().c_str(),
+	     TimeStepsTask::D->getWriteVersion().dumpString().c_str() ,
+	     TimeStepsTask::D->getRunTimeVersion(IData::READ).dumpString().c_str(),
+	     TimeStepsTask::D->getRunTimeVersion(IData::WRITE).dumpString().c_str());
+    LOG_INFO(LOG_DTSW,"(****) H(0) version is  write:%s read:%s .\n",
+	     (*H)(0).getWriteVersion().dumpString().c_str(),
+	     (*H)(0).getReadVersion().dumpString().c_str() );
     host = me;
   }
   /*----------------------------------------------------------------*/
@@ -484,9 +520,9 @@ namespace dtsw{
     parent = p;
     host = C->getHost();
     atm_offset = a.get_block_row() * Parameters.atm_block_size_L1;
-    *this << *A << *B >> *C;
     key = RHS;
     setNameWithParent("_RHS");	  
+    *this << *A << *B >> *C;
     if(getHost() == me ) 
       if(parent)
 	Atomic::increase(&parent->child_count);

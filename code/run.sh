@@ -17,7 +17,7 @@ k=1;DLB=0
 P=2;p=2;q=1;
 ipn=$P;nt=10;
 B=4;b=5;
-iter=3
+iter=20
 
 #assert ( B >= p ) 
 #assert ( B >= q )
@@ -27,8 +27,8 @@ iter=3
 N=86111
 #====================================
 
-module load intel intelmpi/17.4
 #module load gcc openmpi
+module load intel intelmpi/17.4
 JobID=${SLURM_JOB_ID}
 app=./bin/dtsw_debug
 
@@ -40,16 +40,22 @@ outfile=$tempdir/tests_${JobID}.out
 echo "========================================================================================="
 set -x 
 rm $outfile
-srun  -n $P -c $nt -m cyclic:cyclic:* -l --output $outfile $app ${params}
-#mpirun -n $P -output-filename $outfile   $app ${params}
+if [ "z${CXX}z" == "zg++z" ] ; then 
+	mpirun -n $P -output-filename $outfile   $app ${params}
+else
+	srun  -n $P -c $nt -m cyclic:cyclic:* -l --output $outfile $app ${params}
+fi
 for i in $(seq 0 $[$P-1])
 do
-    grep "${i}:" $outfile >$tempdir/tests_p${i}.out
+    grep "${i}:" $outfile >$tempdir/tests_${JobID}_p${i}.out
     str="s/$i://g"
-    sed -i -e $str $tempdir/tests_p${i}.out
+    sed -i -e $str $tempdir/tests_${JobID}_p${i}.out
 done 
-grep "First task submitted" $tempdir/tests_p0.out > timing.txt
-grep "Program finished" $tempdir/tests_p0.out >> timing.txt
-grep "P:" $tempdir/tests_p0.out >> timing.txt
+echo "${JobID}:" >> timing.txt
+grep "First task submitted" $tempdir/tests_${JobID}_p0.out >> timing.txt
+grep "Program finished" $tempdir/tests_${JobID}_p0.out >> timing.txt
+grep "P:" $tempdir/tests_${JobID}_p0.out >> timing.txt
 grep " timeout" ${outfile}* 
+grep "(\*\*\*" $tempdir/tests_${JobID}_p0.out > $tempdir/p0_${iter}.txt
+grep "(\*\*\*" $tempdir/tests_${JobID}_p1.out > $tempdir/p1_${iter}.txt
 rm *file*.txt

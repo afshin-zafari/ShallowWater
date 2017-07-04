@@ -29,8 +29,8 @@ namespace dtsw{
 	if (parent)
 	  Atomic::increase(&parent->child_count);
       key = STEP;
-      *this <<*A <<*B << *C <<*D >> *E;
       setNameWithParent("_Step");
+      *this <<*A <<*B << *C <<*D >> *E;
     }
     /*------------------------------------------------------------*/
     virtual void runKernel();

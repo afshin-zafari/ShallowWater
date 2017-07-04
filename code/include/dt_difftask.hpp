@@ -18,9 +18,9 @@ namespace dtsw{
       if ( getHost() == me ) 
 	if (p)
 	  Atomic::increase(&parent->child_count);
-      *this << *B >> *C;
       key = DIFF;
       setNameWithParent("_Diff");
+      *this << *B >> *C;
     }
     /*------------------------------------------------------------*/
     void runKernel();

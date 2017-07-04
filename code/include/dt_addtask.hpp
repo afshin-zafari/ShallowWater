@@ -19,10 +19,9 @@ namespace dtsw{
       if ( host == me )
 	if ( parent )
 	  Atomic::increase(&parent->child_count);
-      *this << *A << *B	>> *C;
       key = ADD;
       setNameWithParent("_Add");
-      
+      *this << *A << *B	>> *C;      
     }
     /*----------------------------------------------*/
     void dump(){

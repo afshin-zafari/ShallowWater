@@ -17,6 +17,7 @@ namespace dtsw{
     bool is_submitting;
     virtual void dump()=0;
     virtual void runKernel()=0;
+    virtual ~SWTask(){}
     /*------------------------------------------------------------*/
     SWTask &operator <<(Data &d1){ // Read data
       DataAccess *daxs = new DataAccess;
@@ -29,6 +30,8 @@ namespace dtsw{
       daxs->type = IData::READ;
       data_list->push_back(daxs);
       d->incrementVersion(IData::READ);
+      LOG_INFO(LOG_DTSW,"(****)Daxs Read %s for  %s is %p\n",
+	       getName().c_str(), d1.getName().c_str(),daxs);
       return *this;
 	
     }
@@ -44,12 +47,15 @@ namespace dtsw{
       daxs->type = IData::WRITE;
       data_list->push_back(daxs);
       d->incrementVersion(IData::WRITE);
+      LOG_INFO(LOG_DTSW,"(****)Daxs Write %s for  %s is %p\n",
+	       getName().c_str(),d1.getName().c_str(),daxs);
       return *this;
     }
     //list<DataAccess*> *getDataAccess(){return data_list;}
     /*------------------------------------------------------------*/
     SWTask(){
       data_list = new list<DataAccess*>;
+      LOG_INFO(LOG_DTSW,"(****)Daxs dlist new %p\n",data_list);
       child_count = 0;
       parent = nullptr;
       is_submitting = false;

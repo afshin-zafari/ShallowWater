@@ -86,7 +86,7 @@ namespace dtsw{
 			   + H.data[i].v[1] * T.pack_data[i].data[1].v[0]
 			   + H.data[i].v[2] * T.pack_data[i].data[2].v[0]
 			   + a.f * (a.y * H.data[i].v[2] - a.z * H.data[i].v[1]) + T.pack_data[i].data[0].v[3]);
-      continue;
+      
       /*
       const double q = -(  H.v(i,0) * T.x(i,1)
 			   + H.v(i,1) * T.y(i,1)
@@ -138,7 +138,13 @@ namespace dtsw{
     SGData &a = *A->sg_data;
     SGData &b = *B->sg_data;
     SGData &c = *C->sg_data;
-    LOG_INFO(LOG_DTSW,"Diff task Kernel called.\n");
+    LOG_INFO(LOG_DTSW,"Diff task Kernel called. B is %s,GT-ver: rd:%s, wrt:%s, RT-ver: rd:%s, wrt:%s \n",
+	     B->getName().c_str(),
+	     B->getReadVersion().dumpString().c_str(),
+	     B->getWriteVersion().dumpString().c_str(),
+	     B->getRunTimeVersion(IData::READ).dumpString().c_str(),
+	     B->getRunTimeVersion(IData::WRITE).dumpString().c_str()	     
+	     );
     is_submitting = true;
 
     
