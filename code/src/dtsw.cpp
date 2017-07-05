@@ -15,6 +15,7 @@ namespace dtsw{
   /*----------------------------------------*/
   char * get_path_from_args(int argc, char *argv[]){
     Parameters.IterNo = 2;
+    Parameters.pure_mpi = false;
     for ( int i=0;i<argc;i++){
       LOG_INFO(LOG_DTSW,"argv[%d]=%s.\n",i,argv[i]);
       if (strcmp(argv[i],"--data-path")==0){
@@ -23,6 +24,10 @@ namespace dtsw{
       }
       if (strcmp(argv[i],"--iter-no")==0){
 	Parameters.IterNo = atoi(argv[i+1]);
+      }
+      if(strcmp(argv[i],"--pure-mpi") ==0){
+	Parameters.pure_mpi =true;
+	LOG_INFO(LOG_DTSW,"Parameter pure mpi read from cl as :%d.\n",Parameters.pure_mpi);
       }
     }
     LOG_INFO(LOG_DTSW,"Returned null ptr.\n");
@@ -172,11 +177,11 @@ namespace dtsw{
   void init(int argc, char *argv[]){
     const bool isSparse = true;
     const bool notAllocate = true;
-    sw_engine = new SWAlgorithm;   
-
     Parameters.data_path = new char[200];
-    //strcpy(Parameters.data_path,"./data/galew-6400-31-ep2.7-o4-gc-0.05/");
     strcpy(Parameters.data_path,get_path_from_args(argc,argv));
+    LOG_INFO(LOG_DTSW,"SWAlgorithm constructed with pure-mpi=%d.\n",Parameters.pure_mpi);
+    sw_engine = new SWAlgorithm(Parameters.pure_mpi);
+    //strcpy(Parameters.data_path,"./data/galew-6400-31-ep2.7-o4-gc-0.05/");
     string fn = Parameters.data_path + string("params");
     FILE *f = fopen(fn.c_str(),"rb");
     uint64_t dummy;
@@ -243,9 +248,9 @@ namespace dtsw{
   void finalize(){
     sw_engine->finalize();
     ProfileTime = UserTime() - ProfileTime ;
-    printf("P:%d, p:%d, q:%d, N:%d, B:%d, b:%d, S:%d, T:",
+    printf("P:%d, p:%d, q:%d, N:%d, B:%d, b:%d, S:%d, M:%d, T:",
 	   Parameters.P,Parameters.p,Parameters.q,
-	   Parameters.N,Parameters.partition_level[1].blocks_per_row,Parameters.partition_level[2].blocks_per_row,Parameters.IterNo);
+	   Parameters.N,Parameters.partition_level[1].blocks_per_row,Parameters.partition_level[2].blocks_per_row,Parameters.IterNo,Parameters.pure_mpi);
     delete D;
     delete T;
     delete H;

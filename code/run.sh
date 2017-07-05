@@ -15,9 +15,14 @@
 
 k=1;DLB=0
 P=2;p=2;q=1;
-ipn=$P;nt=10;
-B=4;b=5;
-iter=20
+ipn=$P;
+
+P=20;p=4;q=5;
+nt=1;
+pure_mpi="--pure-mpi"
+
+B=5;b=5;
+iter=2
 
 #assert ( B >= p ) 
 #assert ( B >= q )
@@ -31,8 +36,7 @@ N=86111
 module load intel intelmpi/17.4
 JobID=${SLURM_JOB_ID}
 app=./bin/dtsw_debug
-
-params="-P $P -p $p -q $q -M $N $B $b -N $N $B $b -t $nt --ipn $ipn --iter-no $iter --timeout 50 --data-path ./data/tc5-86111-31-ep2.7-o4-gc-0.05/ "
+params="-P $P -p $p -q $q -M $N $B $b -N $N $B $b -t $nt --ipn $ipn --iter-no $iter --timeout 50 ${pure_mpi} --data-path ./data/tc5-86111-31-ep2.7-o4-gc-0.05/ "
 echo "Params: $params"
 tempdir=./temp
 mkdir -p $tempdir
@@ -47,6 +51,9 @@ else
 fi
 for i in $(seq 0 $[$P-1])
 do
+    if [ $i < 10 ]; then
+      i="$i$i"
+    fi
     grep "${i}:" $outfile >$tempdir/tests_${JobID}_p${i}.out
     str="s/$i://g"
     sed -i -e $str $tempdir/tests_${JobID}_p${i}.out

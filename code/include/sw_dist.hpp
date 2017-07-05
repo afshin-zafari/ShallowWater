@@ -21,20 +21,32 @@ namespace dtsw{
   private:
     std::vector<SWTask*> tasks;
     SuperGlue<Options> *sg_engine;
+    bool pure_mpi;
   public:
   /*---------------------------------------------------------*/
-    SWAlgorithm():IContext("ShallowWater"){
-      sg_engine = new SuperGlue<Options>;
+    SWAlgorithm(bool mpi):IContext("ShallowWater"){
+      pure_mpi = mpi;
+      if ( !pure_mpi)
+	sg_engine = new SuperGlue<Options>;
+
+      
     }
   /*---------------------------------------------------------*/
     void submit(SWTask *t){
       tasks.push_back(t);
       dtEngine.register_task(t);
     }
-  /*---------------------------------------------------------*/
-    void subtask( SWTask *parent, SGTask *child){
-      child->set_parent(parent);
-      sg_engine->submit(child);
+  /*---------------------------------------------------------*/    
+    void subtask( SWTask *parent, SGTask *child){      
+      if ( pure_mpi){
+	child->set_parent(nullptr);
+	LOG_INFO(LOG_DTSW,"Sub task of %s run immediately.\n",parent->getName().c_str());
+	child->run();
+      }
+      else{
+	child->set_parent(parent);
+	sg_engine->submit(child);
+      }
     }
   /*---------------------------------------------------------*/
     void dump_tasks(){

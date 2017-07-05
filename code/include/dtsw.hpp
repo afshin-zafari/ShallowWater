@@ -44,7 +44,8 @@ namespace dtsw{
     char       *data_path;
     double      gh0;
     int         atm_block_size_L1,atm_block_size_L2,
-      N,IterNo,atm_length;    
+      N,IterNo,atm_length;
+    bool pure_mpi;
   }Parameters_t;
   /*----------------------------------------*/
   typedef struct atmdata {
@@ -68,7 +69,6 @@ namespace dtsw{
 
   extern Parameters_t Parameters;
   extern AtmArray Atm;
-  extern SWAlgorithm *sw_engine;
   /*----------------------------------------*/
 }
 #endif // DTSW_HPP

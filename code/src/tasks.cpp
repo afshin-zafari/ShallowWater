@@ -12,13 +12,17 @@ namespace dtsw{
       sw_engine->subtask(this,t);
     }
     is_submitting = false;
+    if ( Parameters.pure_mpi)
+      finished();
   }
   /*---------------------------------------------*/
   void SGAddTask::run(){
     SGData &A = *a;
     SGData &B = *b;
     SGData &C = *c;
-    LOG_INFO(LOG_DTSW,"SG Add task for parent:%s kernel called\n",get_parent()->getName().c_str());
+    if ( get_parent()){
+      LOG_INFO(LOG_DTSW,"SG Add task for parent:%s kernel called\n",get_parent()->getName().c_str());
+    }
     if ( !A.get_data())
       return;
     if ( !B.get_data())
@@ -50,6 +54,8 @@ namespace dtsw{
       sw_engine->subtask(this,t);
     }
     is_submitting = false;
+    if ( Parameters.pure_mpi)
+      finished();
   }
   /*---------------------------------------------*/
   void SGRHSTask::run(){
@@ -151,9 +157,11 @@ namespace dtsw{
     for(int i=0;i<a.get_blocks(); i++){
       SGDiffTask *t = new SGDiffTask(a(i),b(i),c(i));
       sw_engine->subtask(this,t);
-      LOG_INFO(LOG_DTSW,"SG Diff task(%d) is submitted, parent's children#:%d.\n",i,(int)t->get_parent()->child_count);
+      //LOG_INFO(LOG_DTSW,"SG Diff task(%d) is submitted, parent's children#:%d.\n",i,(int)t->get_parent()->child_count);
     }
     is_submitting = false;
+    if ( Parameters.pure_mpi)
+      finished();
 
   }
   /*---------------------------------------------*/
@@ -211,6 +219,8 @@ namespace dtsw{
       sw_engine->subtask(this,t);
     }
     is_submitting = false;
+    if ( Parameters.pure_mpi)
+      finished();
   }
   /*---------------------------------------------*/
   void SGStepTask::run(){
@@ -227,7 +237,5 @@ namespace dtsw{
       }
     }
   }
-  /*---------------------------------------------*/
-  /*---------------------------------------------*/
   /*---------------------------------------------*/
 }
