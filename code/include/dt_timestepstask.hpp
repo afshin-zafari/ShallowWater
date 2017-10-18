@@ -29,9 +29,11 @@ namespace dtsw{
   public:
     static IterationData *D;
     static int last_step ;
+    int get_time_step(){return time_step;}
   /*---------------------------------------------------------------*/
     TimeStepsTask(){
       time_step = last_step++;
+      step_no = time_step;
       register_data();
       child_count =0;
     }

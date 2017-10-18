@@ -12,7 +12,7 @@ DUCTTEIP_LIBPATH_REL = $(DUCTTEIP_DIR)/lib/release
 DUCTTEIP_LIB    = ductteip
 SOURCE_DIR      = ./src
 HEADER_DIR      = ./include
-DUCTTEIP_FLAGS  = -I$(HEADER_DIR) -DWITH_MPI=1 -I$(SUPERGLUE_DIR) -I$(DUCTTEIP_INC)
+DUCTTEIP_FLAGS  = -I$(HEADER_DIR) -DWITH_MPI=1 -I$(SUPERGLUE_DIR) -I$(DUCTTEIP_INC) 
 
 
 ifeq ($(CXX),icpc)
@@ -25,7 +25,7 @@ else
 #-----------------------GCC Compiler set---------------------
 	CPP  = mpicxx
 	GCOV_FLAGS=-fprofile-arcs -ftest-coverage
-	OPTIM_FLAGS=-mavx -march=bdver1 -mfma4 -Ofast  -Wwrite-strings
+	OPTIM_FLAGS=-mavx2 -mfma -march=broadwell -O3 -Wwrite-strings
 	SPECIAL_FLAGS=$(OPTIM_FLAGS)     
 	LINK_FLAGS=-lm -lrt -lpthread -L$(DUCTTEIP_LIBPATH) -l$(DUCTTEIP_LIB) -Wl,--allow-multiple-definition -Wl,--whole-archive
 	LINK_FLAGS_REL=-lm -lrt -lpthread -L$(DUCTTEIP_LIBPATH_REL) -l$(DUCTTEIP_LIB) -Wl,--allow-multiple-definition -Wl,--whole-archive

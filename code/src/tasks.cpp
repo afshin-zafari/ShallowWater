@@ -1,4 +1,5 @@
 #include "dtsw.hpp"
+const int Z=1;
 namespace dtsw{
   /*---------------------------------------------*/
   void AddTask::runKernel(){
@@ -7,11 +8,16 @@ namespace dtsw{
     SGData &c = *C->sg_data;
     LOG_INFO(LOG_DTSW,"Add task :%s kernel called\n",getName().c_str());
     is_submitting = true;
+    list<SGAddTask *> tlist;
     for(int i=0;i<a.get_blocks(); i++){
       SGAddTask *t = new SGAddTask(a(i),b(i),dt,c(i));
-      sw_engine->subtask(this,t);
+      tlist.push_back(t);
+      t->set_parent(this);
+      t->set_step_no(this->step_no);
     }
     is_submitting = false;
+    for (auto t: tlist)
+      sw_engine->submit(t);
     if ( Parameters.pure_mpi)
       finished();
   }
@@ -29,7 +35,8 @@ namespace dtsw{
       return;
     if ( !C.get_data())
       return;
-    
+    LOG_INFO(LOG_DTSW,"@Add Task work: %d \n",A.get_rows());
+    for(int  j=0;j<Z; j++)
     for(int i=0;i<A.get_rows(); i++){
       assert(i<A.get_mem_size_in_elems());
       assert(i<C.get_rows());
@@ -45,15 +52,18 @@ namespace dtsw{
     SGData &b = *B->sg_data;
     SGData &c = *C->sg_data;
     LOG_INFO(LOG_DTSW,"RHS kernel called.\n");
-    
+    list<SGRHSTask*>tlist;
     is_submitting = true;
-    
     for(int i=0;i<a.get_blocks(); i++){
       SGRHSTask *t = new SGRHSTask(atm_offset,a(i),b(i),c(i));
       LOG_INFO(LOG_DTSW,"SG RHS(%d) submitted.\n",i);
-      sw_engine->subtask(this,t);
+      t->set_parent(this);
+      t->set_step_no(this->step_no);
+      tlist.push_back(t);
     }
     is_submitting = false;
+    for(auto t:tlist)
+      sw_engine->submit(t);
     if ( Parameters.pure_mpi)
       finished();
   }
@@ -68,13 +78,17 @@ namespace dtsw{
     
     double d = H.v(0,0) +  H.x(0,0);
     const double gh0 = Parameters.gh0;
+    LOG_INFO(LOG_DTSW,"@RHS task work, H rows: %ld .\n",H.get_rows());
+    
+    for(int  j=0;j<Z; j++)
     for (uint32_t i = 0; i < H.get_rows() ; ++i) {
       if (H.get_row_index()*Parameters.atm_block_size_L2 + atm_offset+ i>=Parameters.atm_length){
-	LOG_INFO(LOG_DTSW,"%d,%d,%d,%d,%d,  len=%ld.\n",H.get_row_index(),Parameters.atm_block_size_L2 , atm_offset, i,
+	LOG_INFO(LOG_DTSW,"@RHS Task skipped, since %d,%d,%d,%d,%d,  len=%ld.\n",H.get_row_index(),Parameters.atm_block_size_L2 , atm_offset, i,
 		 H.get_row_index()*Parameters.atm_block_size_L2 + atm_offset+ i,Parameters.atm_length);
 	continue;
       }
       const atmdata &a(Atm[H.get_row_index()*Parameters.atm_block_size_L2 + atm_offset+ i]);
+      //    LOG_INFO(LOG_DTSW,"@RHS task work, H rows: %ld .\n",H.get_rows());
       int Tz = T.get_mem_size_in_elems();
       int Hz = H.get_mem_size_in_elems();
       int Fz = F.get_mem_size_in_elems();
@@ -152,29 +166,54 @@ namespace dtsw{
 	     B->getRunTimeVersion(IData::WRITE).dumpString().c_str()	     
 	     );
     is_submitting = true;
-
-    
-    for(int i=0;i<a.get_blocks(); i++){
-      SGDiffTask *t = new SGDiffTask(a(i),b(i),c(i));
-      sw_engine->subtask(this,t);
-      //LOG_INFO(LOG_DTSW,"SG Diff task(%d) is submitted, parent's children#:%d.\n",i,(int)t->get_parent()->child_count);
+    list <SGDiffTask*> tlist;
+    int task_count =0;
+    for(int i=0;i<a.get_row_blocks(); i++){
+      for(int j=0;j<a.get_col_blocks(); j++){
+	if ( a(i,j).get_sp_info().data.size() ==0 ){
+	  LOG_INFO(LOG_DTSW,"NO SG Diff submit for block(%d,%d) from %d blocks.\n",i,j,a.get_blocks());
+	  continue;
+	}
+	task_count ++;
+	LOG_INFO(LOG_DTSW,"Row:%d, Col:%d , b.rows:%d, c.rows:%d.\n",i,j,b.get_row_blocks(), c.get_row_blocks());
+	assert(j < b.get_row_blocks());
+	assert(i < c.get_row_blocks());
+	SGDiffTask *t = new SGDiffTask(a(i,j),b(j),c(i));
+	t->set_parent(this);
+	t->set_step_no(this->step_no);
+	tlist.push_back(t);
+	/*
+	SpInfo &sp=a.get_sp_info();
+	  for(int k=0;k<sp.data.size();k+=640){
+	    auto t=sp.data[k];
+	    auto l=sp.index[k];
+	  }
+	*/
+	LOG_INFO(LOG_DTSW,"SG Diff task(%d) is submitted, parent's children#:%d.\n",i,(int)t->get_parent()->child_count);
+      }
     }
     is_submitting = false;
-    if ( Parameters.pure_mpi)
+    for(auto t:tlist)
+      sw_engine->submit(t);
+    if ( task_count ==0)
+      finished();
+    if (Parameters.pure_mpi)
       finished();
 
   }
   /*---------------------------------------------*/
   void SGDiffTask::run(){
     SGData &A(*a),&B(*b),&C(*c);
-    LOG_INFO(LOG_DTSW,"SG Diff for %s task Kernel called.\n",A.get_name().c_str());
-    
+    LOG_INFO(LOG_DTSW,"@SG Diff for %s task Kernel called with D.size:%d.\n",A.get_name().c_str(),A.get_sp_info().data.size());
+    LOG_INFO(LOG_DTSW,"A=%s, B=%s, C=%s \n",A.get_name().c_str(),B.get_name().c_str(),C.get_name().c_str());
+
+    for(int  j=0;j<Z; j++)
     for ( uint32_t i=0;i<A.get_sp_info().data.size(); i++){
-      int r =  A.get_sp_info().index[i].first ;
-      int col =  A.get_sp_info().index[i].second ;
       if(1)
       {
-	/* 
+      int r =  A.get_sp_info().index[i].first ;
+      int col =  A.get_sp_info().index[i].second ;
+	/*
 	LOG_INFO(LOG_DTSW,"C size :%d B. size : %d. \n",C.get_mem_size_in_elems(),B.get_mem_size_in_elems());
 	LOG_INFO(LOG_DTSW,"C:%p (%d) = D(%d) * B:%p (%d)\n",C.get_data(),r,i,B.get_data(), col);
 	double temp = B[col].v[0];
@@ -213,12 +252,16 @@ namespace dtsw{
     SGData &d = *D->sg_data;
     SGData &e = *E->sg_data;
     is_submitting = true;
-    
+    list<SGStepTask*> tlist;
     for(int i=0;i<a.get_blocks(); i++){
       SGStepTask *t = new SGStepTask(a(i),b(i),c(i),d(i),e(i));
-      sw_engine->subtask(this,t);
+      t->set_parent(this);
+      t->set_step_no(this->step_no);
+      tlist.push_back(t);
     }
     is_submitting = false;
+    for(auto t:tlist)
+      sw_engine->submit(t);
     if ( Parameters.pure_mpi)
       finished();
   }
@@ -227,6 +270,9 @@ namespace dtsw{
     SGData &H(*e),&F1(*a),&F2(*b),&F3(*c),&F4(*d);
     double s = 1.0* (TimeStepsTask::last_step-1) * Parameters.dt /6.0;
     if (!H.get_data() ) return;
+    LOG_INFO(LOG_DTSW,"@Step task work, H rows: %ld .\n",H.get_rows());
+
+    for(int  j=0;j<Z; j++)
     for(int i=0;i<H.get_rows();i++){
       assert(i < F1.get_mem_size_in_elems() );
       assert(i < F2.get_mem_size_in_elems() );

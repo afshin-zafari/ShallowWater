@@ -15,6 +15,8 @@ namespace dtsw{
       dt=d;
       host = C->getHost();
       parent = p;
+      if (p)
+	step_no = p->step_no;
       child_count = 0 ;
       if ( host == me )
 	if ( parent )

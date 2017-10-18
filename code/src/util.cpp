@@ -4,7 +4,23 @@
 #include <assert.h>
 namespace dtsw{
   /*------------------------------------------*/
+  void sp_struct(std::vector< std::pair<uint32_t, uint32_t> > &idx){
+    int nnz=0,row=0;
+    for(auto a: idx){
+      nnz++;      
+      if ( row != a.first ) {
+	LOG_INFO(LOG_DTSW,"nnz for row:%d is :%d.\n",row,nnz);
+	nnz=0;
+	row=a.first;
+	continue;
+      }
+    }
+  }
+
+		 
+  /*------------------------------------------*/
   uint64_t  read_var_D(const char * filename,
+
 		  std::vector< std::pair<uint32_t, uint32_t> > &idx,
 		  std::vector< quad<double> > &data){
     FILE *f = fopen(filename,"rb");
@@ -26,6 +42,11 @@ namespace dtsw{
   }
   /*------------------------------------------*/
   void split(SpInfo  &M, int ny, int nx,int chunk_size){
+    if (M.data.size() < 2000){
+      nx = 1;
+      ny = 1;
+      LOG_INFO(LOG_DTSW,"Sparse block nnz is %d, and split into one block only.\n",M.data.size());
+    }
     M.num_blocks_x = nx ;
     M.num_blocks_y = ny ;
     assert(chunk_size);
@@ -43,7 +64,7 @@ namespace dtsw{
       int blk_c = std::min(C / chunk_size, nx-1);
       int rbegin = chunk_size * blk_r;
       int cbegin = chunk_size * blk_c;
-      //      LOG_INFO(LOG_DTSW,"R=%d,C=%d,rbegin=%d,cbegin=%d,blk_c=%d,ny=%d,blk_r=%d,M.sp_blocks.size()=%d\n",R,C,rbegin,cbegin,blk_c,ny,blk_r,M.sp_blocks.size());
+      //LOG_INFO(LOG_DTSW,"R=%d,C=%d,rbegin=%d,cbegin=%d,blk_c=%d,ny=%d,blk_r=%d,M.sp_blocks.size()=%d\n",R,C,rbegin,cbegin,blk_c,ny,blk_r,M.sp_blocks.size());
       assert(blk_c*ny + blk_r <M.sp_blocks.size());
       SpInfo &block = *M.sp_blocks[blk_c * ny + blk_r];
       block.data.push_back(M.data[i]);
@@ -95,7 +116,7 @@ namespace dtsw{
     fread(&N,sizeof(uint64_t),1,f);
     int item_count = M*N/block_count/4 ;
     size_t item_size = sizeof(double) * 4; // each row of H has 4 elements;
-    LOG_INFO(LOG_DTSW,"%d,%d,%d,%d,%d,%d\n",M,N,item_count,item_size,block_index,block_index * item_count * item_size);
+    LOG_INFO(0*LOG_DTSW,"%d,%d,%d,%d,%d,%d\n",M,N,item_count,item_size,block_index,block_index * item_count * item_size);
     fseek(f,block_index * item_count * item_size  ,SEEK_CUR);
     memory = new byte[item_count * item_size];
     item_count = fread(&memory[0],item_size,item_count,f);

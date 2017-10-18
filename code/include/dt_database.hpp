@@ -10,7 +10,7 @@ namespace dtsw{
     std::vector <DTSWData *> Dlist;
     int rows,cols,row_idx,col_idx;
     byte *memory_p;
-    int mem_size_in_bytes, mem_size_in_elements,item_size;
+    int mem_size_in_bytes, mem_size_in_elements,item_size,nnz;
   public:
     SGData *sg_data;
     int sp_row,sp_col;
@@ -19,6 +19,8 @@ namespace dtsw{
     DTSWData();
     /*---------------------------------------------------------------------------*/
     DTSWData (int M, int N, int r,int c, std::string n, int , int , bool isSparse = false);
+    void add_nnz(int z){nnz +=z;}
+    int get_nnz(){return nnz;}
     /*---------------------------------------------------------------------------*/
     DTSWData &operator()(int i, int j){
       return *Dlist[j*rows + i];

@@ -1,4 +1,3 @@
-
 #include "dtsw.hpp"
 #include "util.hpp"
 #define LOG_DTSW_DATA 0
@@ -24,6 +23,7 @@ namespace dtsw{
       }
       if (strcmp(argv[i],"--iter-no")==0){
 	Parameters.IterNo = atoi(argv[i+1]);
+	LOG_INFO(LOG_DTSW,"TimeStep #:%d.\n",Parameters.IterNo);
       }
       if(strcmp(argv[i],"--pure-mpi") ==0){
 	Parameters.pure_mpi =true;
@@ -91,8 +91,9 @@ namespace dtsw{
     }
     for(uint32_t i=0;i<sp_info.sp_blocks.size();i++){
       for(uint32_t j=0;j<sp_info.sp_blocks[i]->sp_blocks.size();j++){
-	LOG_INFO(LOG_DTSW_DATA,"Assign D %dx%d.\n",sp_info.sp_blocks.size(),sp_info.sp_blocks[i]->sp_blocks.size());
+	LOG_INFO(LOG_DTSW_DATA,"Assign D %dx%d.\n",sp_info.sp_blocks.size(),sp_info.sp_blocks[i]->sp_blocks.size());	
 	SpInfo &sp = *sp_info.sp_blocks[i]->sp_blocks[j];
+	LOG_INFO(LOG_DTSW,"D(%d)(%d), rb:%d, cb:%d, n:%d\n",i,j,sp.rb,sp.cb,sp.data.size());
 	Data &A = (*D)(i%nby,i/nby);
 	int   k = j%nby2;
 	int   l = j/nby2;
@@ -103,6 +104,7 @@ namespace dtsw{
 	assert(sp_info.sp_blocks[i]);
 	assert(sp_info.sp_blocks[i]->sp_blocks[j]);
 	a.set_sp_info(sp_info.sp_blocks[i]->sp_blocks[j]);
+	A.add_nnz(sp.data.size());
       }
     }
     sp_info.index.clear();
@@ -179,8 +181,6 @@ namespace dtsw{
     const bool notAllocate = true;
     Parameters.data_path = new char[200];
     strcpy(Parameters.data_path,get_path_from_args(argc,argv));
-    LOG_INFO(LOG_DTSW,"SWAlgorithm constructed with pure-mpi=%d.\n",Parameters.pure_mpi);
-    sw_engine = new SWAlgorithm(Parameters.pure_mpi);
     //strcpy(Parameters.data_path,"./data/galew-6400-31-ep2.7-o4-gc-0.05/");
     string fn = Parameters.data_path + string("params");
     FILE *f = fopen(fn.c_str(),"rb");
@@ -192,6 +192,8 @@ namespace dtsw{
 
     dtEngine.set_memory_policy(engine::ALL_USER_ALLOCATED);
     dtEngine.start(argc,argv);
+    LOG_INFO(LOG_DTSW,"SWAlgorithm constructed with pure-mpi=%d,num-thrd:%d.\n",Parameters.pure_mpi,config.getNumThreads());
+    sw_engine = new SWAlgorithm(config.getNumThreads(),Parameters.pure_mpi);
     
     LOG_INFO(LOG_DTSW,"After DuctTeip Init.\n");
     parse_args(argc,argv);
@@ -201,7 +203,7 @@ namespace dtsw{
     int nbx = Parameters.partition_level[1].Nb;
     int M = Parameters.partition_level[0].M;
     int N = Parameters.partition_level[0].N;
-
+    LOG_INFO(LOG_DTSW,"Partitions of vectors:%d\n",nbx);
     LOG_INFO(LOG_DTSW,"Defining DT Data .\n");
     int quad_double_size = sizeof(quad<double>) ,
       quad_vec4_size = sizeof(quad<quad<double>>);
@@ -251,6 +253,14 @@ namespace dtsw{
     printf("P:%d, p:%d, q:%d, N:%d, B:%d, b:%d, S:%d, M:%d, T:",
 	   Parameters.P,Parameters.p,Parameters.q,
 	   Parameters.N,Parameters.partition_level[1].blocks_per_row,Parameters.partition_level[2].blocks_per_row,Parameters.IterNo,Parameters.pure_mpi);
+    if ( !Parameters.pure_mpi ){
+      stringstream fn;
+      fn << "execution_" << Parameters.P << "_" << Parameters.partition_level[0].M <<"_B"
+	 <<Parameters.partition_level[1].blocks_per_row << "_b"
+	 <<Parameters.partition_level[2].blocks_per_row << "_"
+	 << me << ".log";
+      Trace<Options>::dump(fn.str().c_str());
+    }
     delete D;
     delete T;
     delete H;
@@ -269,15 +279,18 @@ namespace dtsw{
   void mult(Data *t,Data *d, Data *h, SWTask *p){
     Data &_D(*d),&_H(*h), &_T(*t);    
     for(int i=0; i< _D.get_rows(); i++){
-      for(int j=0; j< _D.get_cols(); j++){
-	DiffTask *Diff = new DiffTask(_D(i,j),_H(j),_T(i),p);
-	sw_engine->submit(Diff);
-	LOG_INFO(LOG_DTSW,"Diff task (%d,%d) for host:%d submitted. Children#:%d, Parent: %s children#:%d\n",
-		 i,j,Diff->getHost(),(int)Diff->child_count,Diff->parent->getName().c_str(),(int)Diff->parent->child_count);
-	LOG_INFO(LOG_DTSW,"(****)%s uses  %s its req version is write:%s read:%s .\n",Diff->getName().c_str(),_H(j).getName().c_str(),
-		 _H(j).getWriteVersion().dumpString().c_str(),
-		 _H(j).getReadVersion().dumpString().c_str() );
-      }
+      for(int j=0; j< _D.get_cols(); j++)
+	{
+	  if ( _D(i,j).get_nnz() ==0) 
+	    continue;
+	  DiffTask *Diff = new DiffTask(_D(i,j),_H(j),_T(i),p);
+	  sw_engine->submit(Diff);
+	  LOG_INFO(LOG_DTSW,"Diff task (%d,%d) for host:%d submitted. Children#:%d, Parent: %s children#:%d\n",
+		   i,j,Diff->getHost(),(int)Diff->child_count,Diff->parent->getName().c_str(),(int)Diff->parent->child_count);
+	  LOG_INFO(LOG_DTSW,"(****)%s uses  %s its req version is write:%s read:%s .\n",Diff->getName().c_str(),_H(j).getName().c_str(),
+		   _H(j).getWriteVersion().dumpString().c_str(),
+		   _H(j).getReadVersion().dumpString().c_str() );
+	}
     }
   }
   /*----------------------------------------*/
@@ -327,22 +340,26 @@ namespace dtsw{
   void runStep(SWTask*);
   IterationData *TimeStepsTask::D = nullptr;
   int TimeStepsTask::last_step=0;
+  /*----------------------------------------------------*/
   void run(int argc, char *argv[]){
     TimeStepsTask::D = new IterationData();
-    int n = 2;// Parameters.IterNo;
+    int n = Parameters.IterNo;//( Parameters.IterNo<2)?Parameters.IterNo:2;
     for(int i=0; i < n; i++){
       TimeStepsTask *step = new TimeStepsTask;
       sw_engine->submit(step);
       //runStep(step);
     }
+    sw_engine->flush();
   }
   /*----------------------------------------------------*/
   void TimeStepsTask::finished(){
     SWTask::finished();
     
     LOG_INFO(LOG_DTSW,"step :%d, Par.StepNo :%d\n",last_step, Parameters.IterNo);
-    if ( last_step  < Parameters.IterNo )         
+    if ( last_step  < Parameters.IterNo ) {        
       sw_engine->submit(new TimeStepsTask );
+      sw_engine->flush();
+    }
     LOG_INFO(LOG_DTSW,"(****)TimeStepTask::fin H(0) version is  write:%s read:%s .\n",
 	     (*H)(0).getWriteVersion().dumpString().c_str(),
 	     (*H)(0).getReadVersion().dumpString().c_str() );
@@ -357,6 +374,7 @@ namespace dtsw{
     is_submitting = true;
     runStep(this);
     is_submitting = false;
+    sw_engine->flush();
     LOG_INFO(LOG_DTSW,"DT Tasks count:%d.\n",sw_engine->get_tasks_count());
     LOG_INFO(LOG_DTSW,"(****)TimeStepTask::fin H(0) version is  write:%s read:%s .\n",
 	     (*H)(0).getWriteVersion().dumpString().c_str(),
@@ -377,11 +395,11 @@ namespace dtsw{
     LOG_INFO(LOG_DTSW,"f(F1,H) is called.\n");
     f(F1,H, p);                      // F1 = f(H)
     add(H1, H , 0.5*dt, F1 , p);     // H1 = H + 0.5*dt*F1
-    f(F2,H1,p);
+    f(F2,H1,p);                      // F2 = f(H1)
     add(H2, H , 0.5*dt, F2 , p);     // H2 = H + 0.5*dt*F2
-    f(F3,H2,p);
-    add(H3, H ,     dt, F3 , p);     // H2 = H +     dt*F3
-    f(F4,H3,p);
+    f(F3,H2,p);                      // F3 = f(H2)
+    add(H3, H ,     dt, F3 , p);     // H3 = H +     dt*F3
+    f(F4,H3,p);                      // F4 = f(H3)
     step(H,F1,F2,F3,F4,p);          // H = H + dt/6*(F1+2*F2+2*F3+F4)
     return;
   }
@@ -400,7 +418,7 @@ namespace dtsw{
       TimeStepsTask::D->setRunTimeVersion("0.0",0);      
     IDuctteipTask::key = key;
     DataAccessList *dlist = new DataAccessList;    
-    data_access(dlist,TimeStepsTask::D,(last_step==1)?IData::READ:IData::WRITE);
+    //    data_access(dlist,TimeStepsTask::D,(last_step==1)?IData::READ:IData::WRITE);
     setDataAccessList(dlist);
     LOG_INFO(LOG_DTSW,"(****)TimeStePDATA gt-ver: rd %s, wr %s --- rt-ver: rd %s wr %s\n",
 	     TimeStepsTask::D->getReadVersion().dumpString().c_str(),
@@ -417,7 +435,7 @@ namespace dtsw{
     memory_type = USER_ALLOCATED;
     host_type=SINGLE_HOST;
     IData::parent_data = NULL;
-    setDataHandle( sw_engine->createDataHandle());
+    setDataHandle( sw_engine->createDataHandle(this));
     setDataHostPolicy( glbCtx.getDataHostPolicy() ) ;
     setLocalNumBlocks(1,1);
     IData::Mb = 0;
@@ -433,7 +451,7 @@ namespace dtsw{
     memory_type = USER_ALLOCATED;
     host_type=ALL_HOST;
     IData::parent_data = NULL;
-    setDataHandle( sw_engine->createDataHandle());
+    setDataHandle( sw_engine->createDataHandle(this));
     setDataHostPolicy( glbCtx.getDataHostPolicy() ) ;
     setLocalNumBlocks(1,1);
     IData::Mb = 0;
@@ -474,6 +492,7 @@ namespace dtsw{
   /*----------------------------------------------------------------------------*/
   DTSWData::DTSWData (int M, int N, int r,int c, std::string n,int total_size_in_bytes, int item_size_, bool isSparse)
     {
+      nnz=0;
       setName(n);
       item_size = item_size_;
     for(int j=0;j<c;j++){
@@ -523,6 +542,8 @@ namespace dtsw{
     C = static_cast<Data *>(&c);
     child_count = 0;
     parent = p;
+    if (p)
+      step_no = p->step_no;
     host = C->getHost();
     atm_offset = a.get_block_row() * Parameters.atm_block_size_L1;
     key = RHS;

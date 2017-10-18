@@ -1,16 +1,29 @@
 #ifndef SG_TASKBASE_HPP
 #define SG_TASKBASE_HPP
-#include "sg_database.hpp"
-#include "dt_taskbase.hpp"
+#include <sstream>
+#include "dt_taskbase.hpp" 
 #include "sg/superglue.hpp"
 #include "sg/platform/atomic.hpp"
+#include "sg_database.hpp"
 namespace dtsw{
   /*=========================================================*/
   class SGTask : public Task<Options>{
   private:
     SWTask *parent;
+    int step_no;
+  protected:
+    string name;    
   public:
     SWTask* get_parent(){return parent;}
+    string get_name(){return name;}
+    void set_step_no(int sno){
+      step_no = sno;
+      std::ostringstream ss;
+      ss << name << '_' << sno;
+      name=ss.str();
+      LOG_INFO(LOG_DTSW,"SGTask name for step: %d, %s.\n",step_no,name.c_str());
+      //      name += string(std::itoa(sno));
+    }
     virtual void run()=0;
     /*---------------------------------------------------------*/
     void set_parent(SWTask *p){
@@ -21,7 +34,12 @@ namespace dtsw{
     /*---------------------------------------------------------*/
     ~SGTask(){
       if (parent){
+	/*
+	auto t = getTime();
 	while ( parent->is_still_submitting() ) {};
+	auto d = getTime() - t;
+	fprintf(stdout,"time to wait for parent finish submission: %d\n",d);
+	*/
 	
 	if ( sg::Atomic::decrease_nv(&parent->child_count) ==0 )
 	  parent->finished();
@@ -34,9 +52,10 @@ namespace dtsw{
   private:
     SGData *a,*b,*c;
     double dt;
+    
   public:
 
-    /*---------------------------------------------------------*/
+      /*---------------------------------------------------------*/
     SGAddTask(SGData &a_, SGData &b_, double dt_ , SGData &c_){
       a = &a_;
       b = &b_;
@@ -45,6 +64,7 @@ namespace dtsw{
       register_access(ReadWriteAdd::read ,a->get_sg_handle());
       register_access(ReadWriteAdd::read ,b->get_sg_handle());
       register_access(ReadWriteAdd::write,c->get_sg_handle());
+      name.assign("SGAdd");
     }
     void run();
   };
@@ -54,6 +74,7 @@ namespace dtsw{
   private:
     SGData *t,*h,*dh;
     int atm_offset;
+    
   public:
 
     /*---------------------------------------------------------*/
@@ -65,6 +86,7 @@ namespace dtsw{
       register_access(ReadWriteAdd::read , t->get_sg_handle());
       register_access(ReadWriteAdd::read , h->get_sg_handle());
       register_access(ReadWriteAdd::write,dh->get_sg_handle());
+      name.assign("SGRHS");
     }
     void run();
   };
@@ -72,6 +94,7 @@ namespace dtsw{
   class SGDiffTask: public SGTask{
   private:
     SGData *a,*b,*c;
+    
   public:
 
     /*---------------------------------------------------------*/
@@ -82,6 +105,7 @@ namespace dtsw{
       register_access(ReadWriteAdd::read ,a->get_sg_handle());
       register_access(ReadWriteAdd::read ,b->get_sg_handle());
       register_access(ReadWriteAdd::write,c->get_sg_handle());
+      name.assign("Diff");
     }
     void run();
   };
@@ -89,6 +113,7 @@ namespace dtsw{
   class SGStepTask: public SGTask{
   private:
     SGData *a,*b,*c,*d,*e;
+    
   public:
 
     /*---------------------------------------------------------*/
@@ -103,6 +128,7 @@ namespace dtsw{
       register_access(ReadWriteAdd::read ,c->get_sg_handle());
       register_access(ReadWriteAdd::read ,d->get_sg_handle());
       register_access(ReadWriteAdd::write,e->get_sg_handle());
+      name.assign("Step");
     }
     void run();
   };

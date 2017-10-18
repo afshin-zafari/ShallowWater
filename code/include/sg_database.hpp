@@ -11,7 +11,10 @@ namespace dtsw{
   Partitions Level[3];
   //  Level[0].y.num_elems;
   /*----------------------------------------------------------------*/
-  struct Options: public DefaultOptions<Options>{};
+  struct Options: public DefaultOptions<Options> {
+    typedef Enable TaskName;
+    typedef sg::Trace<Options> Instrumentation;
+  };
   typedef Handle <Options> SGHandle;
   /*----------------------------------------------------------------*/
   struct DataPack{
@@ -40,14 +43,26 @@ namespace dtsw{
     /*----------------------------------------------------------------*/
     SGSWData(){sp_info = nullptr;memory_p = nullptr;}
     void partition_data(DTSWData &d,int R,int C);
+
     /*----------------------------------------------------------------*/
     SGSWData(int i, int j){my_row=i;my_col=j;sp_info = nullptr;}
     /*----------------------------------------------------------------*/
     SGHandle&get_sg_handle(){return sg_handle;}
     /*----------------------------------------------------------------*/
-    int get_blocks(){return rows;}
-    int get_row_blocks(){return rows;}
-    int get_col_blocks(){return cols;}
+    int get_blocks(){return rows*cols;}
+    int get_row_blocks(){
+      return rows;
+      if(!sp_info)
+	return 0;
+      return sp_info->num_blocks_y;
+    }
+    int get_col_blocks(){
+      return cols;
+      if(!sp_info)
+	return 0;
+      
+      return sp_info->num_blocks_x;
+    }
     /*----------------------------------------------------------------*/
     SGSWData &  operator()(int i, int j){
       return *parts[j*rows+i];
@@ -84,6 +99,7 @@ namespace dtsw{
     quad<double> *get_data(){return data;}
     /*----------------------------------------------------------------*/
     SpInfo &get_sp_info(){return *sp_info;}
+    SpInfo *get_sp_info_ptr(){return sp_info;}
     void    set_sp_info(SpInfo *sp){sp_info = sp;}
     int     get_row_index(){return my_row;}
     void    report_data();

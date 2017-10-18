@@ -14,6 +14,7 @@ namespace dtsw{
       child_count = 0;
       parent = p;
       host = C->getHost();
+      step_no = p->step_no;
       LOG_INFO(LOG_DTSW,"host of Diff task %d\n",getHost());
       if ( getHost() == me ) 
 	if (p)

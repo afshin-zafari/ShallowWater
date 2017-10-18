@@ -15,6 +15,7 @@ namespace dtsw{
     //std::atomic<size_t> child_count;
     int child_count;
     bool is_submitting;
+    int step_no;
     virtual void dump()=0;
     virtual void runKernel()=0;
     virtual ~SWTask(){}
@@ -64,11 +65,18 @@ namespace dtsw{
     virtual void finished(){
       if ( state >= Finished  ) return;
       setFinished(true);
-      if (parent){
-	while ( parent->is_still_submitting() ){};
-	LOG_INFO(LOG_DTSW, "%s finished from parent's task :%s child_count :%d\n " ,getName().c_str(),parent->getName().c_str(),(int)parent->child_count );
+      if ( parent){
 	if ( Atomic::decrease_nv(&parent->child_count) ==0)
-	  parent->finished();	
+	  {
+	    LOG_INFO(LOG_DTSW,"child task :%s is waiting for parent: %s finishes submission.\n",getName().c_str(),parent->getName().c_str());
+	    
+	    //auto t=getTime();
+	    //while ( parent->is_still_submitting() ){Atomic::yield();}
+	    //auto d= getTime() -t;
+	    //fprintf(stdout,"wait for parent finish submission:%d.\n",d);
+	    LOG_INFO(LOG_DTSW, "%s finished from parent's task :%s child_count :%d\n " ,getName().c_str(),parent->getName().c_str(),(int)parent->child_count );
+	    parent->finished();
+	}
       }	
     }
     /*------------------------------------------------------------*/

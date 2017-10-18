@@ -23,6 +23,8 @@ namespace dtsw{
       D = static_cast<Data *>(&d);
       E = static_cast<Data *>(&e);
       parent = p;
+      if(p)
+	step_no = p->step_no;
       child_count = 0;
       host = E->getHost();
       if ( host == me ) 

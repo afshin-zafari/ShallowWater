@@ -24,20 +24,35 @@ namespace dtsw{
     bool pure_mpi;
   public:
   /*---------------------------------------------------------*/
-    SWAlgorithm(bool mpi):IContext("ShallowWater"){
+    SWAlgorithm(int num_thrd,bool mpi):IContext("ShallowWater"){
       pure_mpi = mpi;
       if ( !pure_mpi)
-	sg_engine = new SuperGlue<Options>;
+	sg_engine = new SuperGlue<Options>(num_thrd);
 
       
     }
   /*---------------------------------------------------------*/
+    void flush(){
+      for(auto t:tasks)
+	dtEngine.register_task(t);
+      tasks.clear();
+    }
+  /*---------------------------------------------------------*/
     void submit(SWTask *t){
       tasks.push_back(t);
-      dtEngine.register_task(t);
+    }
+  /*---------------------------------------------------------*/
+    void submit( SGTask *child){      
+      if ( pure_mpi){
+	child->set_parent(nullptr);
+	child->run();
+      }
+      else
+	sg_engine->submit(child);
     }
   /*---------------------------------------------------------*/    
     void subtask( SWTask *parent, SGTask *child){      
+      child->set_step_no ( parent->step_no);
       if ( pure_mpi){
 	child->set_parent(nullptr);
 	LOG_INFO(LOG_DTSW,"Sub task of %s run immediately.\n",parent->getName().c_str());
